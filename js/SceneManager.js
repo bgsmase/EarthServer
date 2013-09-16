@@ -670,6 +670,22 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Returns the model object with the given index.
+     * @param modelIndex - Index of the model.
+     * @returns {Object}
+     */
+    this.getModel = function(modelIndex)
+    {
+        if(modelIndex < models.length)
+        { return models[modelIndex]; }
+        else
+        {
+            console.log("MainScene::getModelOffsetX: No model with ID " + modelIndex);
+            return undefined;
+        }
+    };
+
+    /**
      * Returns the name of the scene model with the given index.
      * @param modelIndex - Index of the model.
      * @returns {String}
