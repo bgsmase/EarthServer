@@ -1122,7 +1122,6 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         field5.setAttribute("value",EarthServerGenericClient.MainScene.getLightColor(0) );
         cShader.appendChild(field5);
 
-
         var vertexCode = "attribute vec3 position; \n";
         vertexCode += "attribute vec3 color; \n";
         vertexCode += "uniform mat4 modelViewProjectionMatrix; \n";
