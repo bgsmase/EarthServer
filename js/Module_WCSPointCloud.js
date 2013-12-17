@@ -166,5 +166,5 @@ EarthServerGenericClient.Model_WCSPointCloud.prototype.setSpecificElement= funct
 {
     // change point size
     var id = "EarthServerGenericClient_SliderCell_ps_"+this.index;
-    EarthServerGenericClient.appendGenericSlider(element,id,"Point Size",this.index,1,10,this.pointSize, EarthServerGenericClient.MainScene.updatePointSize);
+    EarthServerGenericClient.appendGenericSlider(element,id,"Point Size",this.index,1,20,this.pointSize, EarthServerGenericClient.MainScene.updatePointSize);
 };

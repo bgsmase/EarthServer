@@ -181,6 +181,30 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Calls the light update function of the model's terrain.
+     * @param lightDomElement - The light dom element.
+     */
+    this.lightUpdate = function(lightDomElement)
+    {
+        this.terrain.lightUpdate(lightDomElement);
+    };
+
+    /**
+     * Returns the minimum value of the models data at the given axis.
+     * @param axis - 0=x 1=y= 2=z
+     */
+    this.getMinDataValueAtAxis = function(axis)
+    {
+        if( this.terrain)
+            return this.terrain.getMinDataValueAtAxis( axis);
+        else
+        {
+            console.log("EarthServerGenericClient::Module_Base::getMinDataValueAtAxis(): this.terrain is not defined");
+            return 0;
+        }
+    };
+
+    /**
      * Modules report their loading progress with this function which reports to the main scene.
      */
     this.reportProgress = function()
@@ -189,8 +213,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         // The progress parameter is the progress of ONE request.
         // ReceivedDataCount is the number of already received responses.
         // it is doubled because for each request one terrain will be build.
-        var totalProgress = ((this.receivedDataCount) / (this.requests * 2))*100;
-        EarthServerGenericClient.MainScene.reportProgress(this.index,totalProgress);
+        EarthServerGenericClient.MainScene.reportProgress(this.index);
     };
 
     /**

@@ -79,7 +79,7 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
     cp=null;
 
     //Create Div Reset
-    var reset = document.createElement("h3");
+    /*var reset = document.createElement("h3");
     reset.innerHTML = "Reset";
     var rdiv = document.createElement("div");
     var rp   = document.createElement("p");
@@ -96,13 +96,16 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
     UI_DIV.appendChild(rdiv);
 
     rdiv=null;
-    rp=null;
+    rp=null;*/
 
     //Create Divs for a Light sources
     for(i=0; i<EarthServerGenericClient.MainScene.getLightCount();i++)
     {
         var lightHeader = document.createElement("h3");
-        lightHeader.innerHTML = "Light " + i;
+        if(i == 0)
+            lightHeader.innerHTML = "Light";
+        else
+            lightHeader.innerHTML = "Light " + i;
         var lightDiv = document.createElement("div");
 
         UI_DIV.appendChild(lightHeader);

@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 27.11.1013
+ * @version 0.7 alpha 17.12.1013
  */
 var EarthServerGenericClient =  {};
 
@@ -98,9 +98,8 @@ EarthServerGenericClient.Light = function(domElement,index,position,radius,color
 {
     var ambientIntensity = "0.5";
     var intensity        = "0.8";
-    var location         = "0 1000 0";
 
-    if(position === undefined){  location = position;    }
+    if(position === undefined){  position = "0 1000 0";    }
     if(radius === undefined ) {  radius = "8000";    }
     if(color === undefined)   {  color = "1 1 1"; }
 
@@ -112,7 +111,7 @@ EarthServerGenericClient.Light = function(domElement,index,position,radius,color
         light.setAttribute("color",color);
         light.setAttribute("intensity",intensity);
         light.setAttribute("radius",radius);
-        light.setAttribute("location",location);
+        light.setAttribute("location",position);
 
         domElement.appendChild(light);
         light = null;
@@ -149,6 +148,7 @@ EarthServerGenericClient.SceneManager = function()
     var defaultDiffuseColor = "1 1 1"; // default diffuse color for materials
     var keyMapping = {};            // Stores the keys for certain events
     var globalElevationValue = 10;  // Stores the last used global elevation value
+    var lightObserver = []; // Array of light observer
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -871,7 +871,7 @@ EarthServerGenericClient.SceneManager = function()
                 if( tmp > 1.0) tmp = 1;
                 totalLoadingProgress += tmp;
             }
-            totalLoadingProgress = (totalLoadingProgress / modelLoadingProgress.length)*100;
+            totalLoadingProgress = (parseFloat(totalLoadingProgress) / parseFloat(modelLoadingProgress.length))*100;
 
             //Callback function or console?
             if( progressCallback !== undefined)
@@ -1008,7 +1008,6 @@ EarthServerGenericClient.SceneManager = function()
             this.sceneID = sceneID;
         }
 
-        // Navigation <navigationInfo id="navi" type='"TURNTABLE" "ANY"' typeParams="-0.4, 60, 0.5, 1.55"></navigationInfo>
         var navigation = document.createElement("navigationInfo");
         navigation.setAttribute("type",'"TURNTABLE" "ANY"');
         navigation.setAttribute("typeParams","-0.4, 60, 0.5, 2.55");
@@ -1017,11 +1016,7 @@ EarthServerGenericClient.SceneManager = function()
         // Light
         if( lightInScene)
         {
-            var lightTransform = document.createElement("transform");
-            lightTransform.setAttribute("id","EarthServerGenericClient_lightTransform0");
-            lightTransform.setAttribute("translation","0 0 0");
-            lights.push(new EarthServerGenericClient.Light(lightTransform,0, "0 0 0"));
-            x3d.appendChild(lightTransform);
+            lights.push(new EarthServerGenericClient.Light(x3d,0, "0 "+ cubeSizeY +" 0"));
         }
 
         // Background
@@ -1514,6 +1509,25 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Add a callback function for light changes.
+     * @param modelIndex - Index of the model.
+     */
+    this.addLightObserver = function(modelIndex)
+    {
+        lightObserver.push( modelIndex );
+    };
+
+    /**
+     * Calls all light observers functions.
+     * @param lightDomElement
+     */
+    this.callLightObserver = function(lightDomElement)
+    {
+        for(var i=0; i< lightObserver.length; i++)
+            models[ lightObserver[i] ].lightUpdate(lightDomElement);
+    };
+
+    /**
      * Updates the position of a light.
      * @param lightIndex - Index of the light
      * @param which - Which Axis will be changed (0:X 1:Y 2:Z)
@@ -1521,20 +1535,55 @@ EarthServerGenericClient.SceneManager = function()
      */
     this.updateLightPosition = function(lightIndex,which,value)
     {
-        var trans = document.getElementById("EarthServerGenericClient_lightTransform"+lightIndex);
+        var light = document.getElementById("EarthServerGenericClient_Light_"+lightIndex);
 
-        if( trans && which !== undefined && value !== undefined )
+        if( light && which !== undefined && value !== undefined )
         {
-            var oldTrans = trans.getAttribute("translation");
+            var oldTrans = light.getAttribute("location");
             oldTrans = oldTrans.split(" ");
             oldTrans[which] = value;
-            trans.setAttribute("translation",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
+            light.setAttribute("location",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
+            EarthServerGenericClient.MainScene.callLightObserver(light);
         }
         else
         {
             console.log("EarthServerGenericClient::SceneManager: Can't update light position.");
             console.log("Index " + lightIndex + ", Axis "+ which + " and Position " + value);
         }
+
+        light = null;
+    };
+
+    /**
+     * Returns the current position of the light with the given index.
+     * @param lightIndex - Index of the light.
+     */
+    this.getLightPosition = function(lightIndex)
+    {
+        var light = document.getElementById("EarthServerGenericClient_Light_"+lightIndex);
+        if(light)
+        {   return light.getAttribute("location");  }
+        else
+        {   console.log("EarthServerGenericClient::SceneManager: Can't find light with index " + lightIndex +".");}
+
+        light = null;
+        return "0 0 0";
+    };
+
+    /**
+     * Returns the current color of the light with the given index.
+     * @param lightIndex - Index of the light.
+     */
+    this.getLightColor = function(lightIndex)
+    {
+        var light = document.getElementById("EarthServerGenericClient_Light_"+lightIndex);
+        if(light)
+        {   return light.getAttribute("color"); }
+        else
+        {   console.log("EarthServerGenericClient::SceneManager: Can't find light with index " + lightIndex +".");}
+
+        light = null;
+        return "1.0 1.0 1.0";
     };
 
     /**
@@ -1548,9 +1597,12 @@ EarthServerGenericClient.SceneManager = function()
         if(light)
         {
             light.setAttribute("radius",value);
+            EarthServerGenericClient.MainScene.callLightObserver(light);
         }
         else
         {   console.log("EarthServerGenericClient::SceneManager: Can't find light with index " + lightIndex +".");}
+
+        light = null;
     };
 
     /**
@@ -1564,9 +1616,12 @@ EarthServerGenericClient.SceneManager = function()
         if(light)
         {
             light.setAttribute("intensity",value);
+            EarthServerGenericClient.MainScene.callLightObserver(light);
         }
         else
         {   console.log("EarthServerGenericClient::SceneManager: Can't find light with index " + lightIndex +".");}
+
+        light = null;
     };
 
     /**
@@ -1581,9 +1636,12 @@ EarthServerGenericClient.SceneManager = function()
             var currentValue = light.getAttribute("intensity");
             var newValue = parseFloat(currentValue) + 0.1;
             light.setAttribute("intensity",String(newValue));
+            EarthServerGenericClient.MainScene.callLightObserver(light);
         }
         else
         {   console.log("EarthServerGenericClient::SceneManager: Can't find light with index " + lightIndex +".");}
+
+        light = null;
     };
 
     /**
@@ -1598,9 +1656,12 @@ EarthServerGenericClient.SceneManager = function()
             var currentValue = light.getAttribute("intensity");
             var newValue = parseFloat(currentValue) - 0.1;
             light.setAttribute("intensity",String(newValue));
+            EarthServerGenericClient.MainScene.callLightObserver(light);
         }
         else
         {   console.log("EarthServerGenericClient::SceneManager: Can't find light with index " + lightIndex +".");}
+
+        light = null;
     };
 
     /**
@@ -1615,21 +1676,33 @@ EarthServerGenericClient.SceneManager = function()
 
         if( trans )
         {
+            // off set of the cube
             var offset=0;
+            // the minValue is the scaled minimum value of the data at the given axis
+            // some terrains start with 0 at all axis, others do not.
+            var minValue = EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
+
+            var scale = trans.getAttribute("scale");
+            scale = scale.split(" ");
+
             switch(which)
             {
                 case 0: offset = cubeSizeX/2.0;
+                        minValue *= scale[0];
                         break;
                 case 1: offset = cubeSizeY/2.0;
+                        minValue *= scale[1];
                         break;
                 case 2: offset = cubeSizeZ/2.0;
+                        minValue *= scale[2];
                         break;
             }
 
+            console.log(minValue);
             var oldTrans = trans.getAttribute("translation");
             oldTrans = oldTrans.split(" ");
             var delta = oldTrans[which] - (value - offset);
-            oldTrans[which] = value - offset;
+            oldTrans[which] = value - offset- minValue;
             trans.setAttribute("translation",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
             models[modelIndex].movementUpdateBindings(which,delta);
         }
@@ -1793,6 +1866,22 @@ EarthServerGenericClient.SceneManager = function()
         if( modelIndex <models.length && modelIndex >=0)
             models[modelIndex].updatePointSize(value);
 
+    };
+
+    /**
+     * Returns the minimum value of the models data at the given axis.
+     * @param modelIndex - Index of the model
+     * @param axis - The queries axis.
+     * @returns {number}
+     */
+    this.getMinDataValueAtAxis = function(modelIndex,axis)
+    {
+        if(modelIndex >= 0 && modelIndex < models.length)
+        {
+            return models[modelIndex].getMinDataValueAtAxis(axis);
+        }
+        else
+        {   return 0;   }
     };
 
     /**
@@ -2055,6 +2144,30 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Calls the light update function of the model's terrain.
+     * @param lightDomElement - The light dom element.
+     */
+    this.lightUpdate = function(lightDomElement)
+    {
+        this.terrain.lightUpdate(lightDomElement);
+    };
+
+    /**
+     * Returns the minimum value of the models data at the given axis.
+     * @param axis - 0=x 1=y= 2=z
+     */
+    this.getMinDataValueAtAxis = function(axis)
+    {
+        if( this.terrain)
+            return this.terrain.getMinDataValueAtAxis( axis);
+        else
+        {
+            console.log("EarthServerGenericClient::Module_Base::getMinDataValueAtAxis(): this.terrain is not defined");
+            return 0;
+        }
+    };
+
+    /**
      * Modules report their loading progress with this function which reports to the main scene.
      */
     this.reportProgress = function()
@@ -2063,8 +2176,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         // The progress parameter is the progress of ONE request.
         // ReceivedDataCount is the number of already received responses.
         // it is doubled because for each request one terrain will be build.
-        var totalProgress = ((this.receivedDataCount) / (this.requests * 2))*100;
-        EarthServerGenericClient.MainScene.reportProgress(this.index,totalProgress);
+        EarthServerGenericClient.MainScene.reportProgress(this.index);
     };
 
     /**
@@ -2888,6 +3000,12 @@ EarthServerGenericClient.AbstractTerrain = function()
     {};
 
     /**
+     * @ignore Empty default stub lightUpdate() function.
+     */
+    this.lightUpdate = function(lightDomElement)
+    {};
+
+    /**
      * Clears the list of already defined appearances.
      */
     this.clearDefinedAppearances = function()
@@ -2908,6 +3026,27 @@ EarthServerGenericClient.AbstractTerrain = function()
     this.clearMaterials = function()
     {
         this.materialNodes = [];
+    };
+
+    this.getMinDataValueAtAxis = function(axis)
+    {
+        if( this.data)
+        {
+            var ret = 0;
+            switch(axis)
+            {
+                case 0: ret = this.data.minXvalue; break;
+                case 1: ret = this.data.minHMvalue; break;
+                case 2: ret = this.data.minZvalue; break;
+            }
+
+            return ret;
+        }
+        else
+        {
+            console.log("EarthServerGenericClient::AbstractTerrain::getMinDataValueAtAxis(): this.data is not defined");
+            return 0;
+        }
     };
 
     /**
@@ -3893,8 +4032,11 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
     this.data = data;
     this.index = index;
     this.pointSize = parseFloat(pointSize);
+    // Shader fields IDs for various attributes
     this.transparencyFieldID = "EarthServerGenericClient_model_"+index+"_transparencyField";
     this.pointSizeFieldID    = "EarthServerGenericClient_model_"+index+"_pointSizeField";
+    this.lightPosID          = "EarthServerGenericClient_model_"+index+"_lightPosField";
+    this.lightColorID        = "EarthServerGenericClient_model_"+index+"_lightColorField";
 
     this.createTerrain = function()
     {
@@ -3907,8 +4049,11 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         pointSet.setAttribute("solid","false");
         var coords = document.createElement("coordinate");
         coords.setAttribute("point", data.pointCloudCoordinates);
+        var color = document.createElement("color");
+        color.setAttribute("color", data.vertexColors );
 
         pointSet.appendChild(coords);
+        pointSet.appendChild(color);
         this.appendShader( this.appearance);
         shape.appendChild(this.appearance);
         shape.appendChild(pointSet);
@@ -3920,6 +4065,7 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         this.appearance = null;
 
         EarthServerGenericClient.MainScene.reportProgress(index);
+        EarthServerGenericClient.MainScene.addLightObserver( this.index );
     };
 
     this.appendShader = function(domElement)
@@ -3943,29 +4089,35 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         field3.setAttribute("value",String(this.pointSize.toFixed(2)) );
         cShader.appendChild(field3);
 
+        var field4  = document.createElement("field");
+        field4.setAttribute("id", this.lightPosID);
+        field4.setAttribute("name","lightPos");
+        field4.setAttribute("type","SFVec3f");
+        field4.setAttribute("value",EarthServerGenericClient.MainScene.getLightPosition(0) );
+        cShader.appendChild(field4);
+        var field5  = document.createElement("field");
+        field5.setAttribute("id", this.lightColorID);
+        field5.setAttribute("name","lightColor");
+        field5.setAttribute("type","SFVec3f");
+        field5.setAttribute("value",EarthServerGenericClient.MainScene.getLightColor(0) );
+        cShader.appendChild(field5);
+
+
         var vertexCode = "attribute vec3 position; \n";
+        vertexCode += "attribute vec3 color; \n";
         vertexCode += "uniform mat4 modelViewProjectionMatrix; \n";
         vertexCode += "uniform mat4 projectionMatrix; \n";
-        vertexCode += "varying vec3 fPosition; \n";
-        vertexCode += "varying vec3 fNormal; \n";
         vertexCode += "uniform float pointSize; \n";
+        vertexCode += "uniform vec3 lightPos; \n";
+        vertexCode += "varying vec3 vPos; \n";
+        vertexCode += "varying vec3 vCol; \n";
+        vertexCode += "varying vec3 vertex_to_light_vector; \n";
         vertexCode += "void main() { \n";
-        vertexCode += "fPosition = position; \n";
+        vertexCode += "vCol = color; \n";
+        vertexCode += "vPos = vec3(modelViewProjectionMatrix * vec4(position, 1.0)); \n";
         vertexCode += "gl_Position = modelViewProjectionMatrix * vec4(position, 1.0); \n";
+        vertexCode += "vertex_to_light_vector = vec3(lightPos - vPos); \n";
         vertexCode += "gl_PointSize = pointSize; } \n";
-
-        /*var vertexCode = "precision highp float; \n";
-        vertexCode += "attribute vec3 position; \n";
-        vertexCode += "attribute vec3 normal; \n";
-        vertexCode += "uniform mat4 modelViewMatrix; \n";
-        vertexCode += "uniform mat4 projectionMatrix; \n";
-        vertexCode += "varying vec3 fPosition; \n";
-        vertexCode += "void main() \n";
-        vertexCode += "{ \n";
-        vertexCode += "vec4 pos = modelViewMatrix * vec4(position, 1.0); \n";
-        vertexCode += "gl_PointSize = " + pointSize.toFixed(2) +"; \n";
-        vertexCode += "fPosition = pos; \n";
-        vertexCode += "gl_Position = projectionMatrix * pos;} \n";*/
 
         var shaderPartVertex = document.createElement("shaderPart");
         shaderPartVertex.setAttribute("type","VERTEX");
@@ -3979,23 +4131,16 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         fragmentCode += "#endif \n";
         fragmentCode += "uniform vec3 matCol; \n";
         fragmentCode += "uniform float transparency; \n";
+        fragmentCode += "uniform vec3 lightPos; \n";
+        fragmentCode += "uniform vec3 lightColor; \n";
+        fragmentCode += "varying vec3 vPos; \n";
+        fragmentCode += "varying vec3 vCol; \n";
+        fragmentCode += "varying vec3 vertex_to_light_vector; \n";
         fragmentCode += "void main() { \n";
-        fragmentCode += "gl_FragColor = vec4(matCol, transparency); } \n";
-
-        /*var fragmentCode = "#ifdef GL_FRAGMENT_PRECISION_HIGH \n";
-        fragmentCode += "precision highp float; \n";
-        fragmentCode += "#else \n";
-        fragmentCode += "precision mediump float; \n";
-        fragmentCode += "#endif \n";
-        fragmentCode += "uniform vec2 resolution; \n";
-        fragmentCode += "varying vec3 fPosition; \n";
-        fragmentCode += "void main() { \n";
-        fragmentCode += "float k = (fPosition.z) / (5.0); \n";
-        fragmentCode += "vec2 ss = vec2(gl_FragCoord.x / resolution.x, gl_FragCoord.y/resolution.y); \n";
-        fragmentCode += "gl_FragColor = vec4(ss, k, 1.0); \n";
-        //fragmentCode += "if (length(ss - vec2(0.5)) > 10.55) \n";
-        //agmentCode += "discard; \n";
-        fragmentCode += "} \n";*/
+        fragmentCode += "vec3 normalized_vertex_to_light_vector = normalize(vertex_to_light_vector); \n";
+        fragmentCode += "float DiffuseTerm = clamp(dot(vec3(0.0, 1.0, 0.0), normalized_vertex_to_light_vector), 0.0, 1.0); \n";
+        fragmentCode += "gl_FragColor = vec4(vCol*DiffuseTerm, transparency); } \n";
+        //fragmentCode += "gl_FragColor = vec4(vCol, transparency); } \n";
 
 
         var shaderPartFragment = document.createElement("shaderPart");
@@ -4037,7 +4182,31 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
             pointSizeField.setAttribute("value", String(value));
         else
             console.log("EarthServerGenericClient.PointCloudTerrain: Can't find point size field.")
-    }
+    };
+
+    /**
+     * Callback function when the light was changed.
+     * @param lightElement
+     */
+    this.lightUpdate = function(lightElement)
+    {
+        var position = lightElement.getAttribute("location");
+        this.setLightPosition(position);
+    };
+
+    /**
+     * Sets the position of the light source effecting the point cloud.
+     * @param lightPosition - Position of light source.
+     */
+    this.setLightPosition = function(lightPosition)
+    {
+        var lightPosField = document.getElementById( this.lightPosID);
+
+        if( lightPosField)
+           lightPosField.setAttribute("value",String(lightPosition));
+        else
+            console.log("EarthServerGenericClient.PointCloudTerrain: Can't find light position field.")
+    };
 };
 EarthServerGenericClient.PointCloudTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);//Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
@@ -4050,6 +4219,7 @@ var EarthServerGenericClient = EarthServerGenericClient || {};
 EarthServerGenericClient.ServerResponseData = function () {
     this.heightmap = null;          // Heightmap
     this.pointCloudCoordinates = null; // Point cloud coordinates
+    this.vertexColors = null;       // Color values for vertices or points
     this.noDataValue = undefined;   // The value that should be considered as NODATA.
     this.heightmapUrl = "";         // If available, you can use the link as alternative.
     this.texture = new Image();     // Texture as image object
@@ -4072,7 +4242,8 @@ EarthServerGenericClient.ServerResponseData = function () {
     this.heightmapAsString = false;  // Flag if heightmap is encoded as a array of arrays(default) or as a string with csv.
     this.validateHeightMap = true;   // Flag if heightmap should be checked in validate().
     this.validateTexture   = true;   // Flag if the texture should be checked in validate().
-    this.validatePointCloud = false; // Flag if the point cloud should be in validate().
+    this.validatePointCloud = false; // Flag if the point cloud should be checked in validate().
+    this.validateVertexColors = false; // Flag if the vertex colors should be checked in validate().
     this.removeAlphaChannel = false; // Flag if the alpha channel contains e.g. height data it should be removed for the texture
 
     /**
@@ -4102,6 +4273,13 @@ EarthServerGenericClient.ServerResponseData = function () {
             if( this.pointCloudCoordinates === null) return false;
             if( this.width === null || this.height === null){    return false;   }
             if( this.minHMvalue === Number.MAX_VALUE || this.maxHMvalue === -Number.MAX_VALUE){    return false;   }
+        }
+
+        // vertex/point colors
+        if( this.validateVertexColors )
+        {
+            if( this.vertexColors === null ) return false;
+            if( this.vertexColors.length === 0) return false;
         }
 
         //Everything OK
@@ -4391,13 +4569,9 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
             data: request,
             success: function(receivedData)
             {
-
-                //console.log(receivedData);
-
                 try{
                     EarthServerGenericClient.MainScene.timeLogEnd("WCS PointCloud Coverage: " + callback.name );
-                    var coords = $(receivedData).find(String("SimpleMultiPoint")).text();
-
+                    var coords = $(receivedData).find(String("positions")).text();
 
                     if(coords && coords.length )
                     {
@@ -4405,6 +4579,7 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                         {   coords = coords.substr(1);  }
 
                         var coordsArray = coords.split(" ");
+                        console.log("coordsArray",coordsArray.length);
 
                         // check all coords to set min,max,width&height values
                         for(var i=0; i+2< coordsArray.length; i+=3)
@@ -4437,6 +4612,8 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                             pointCloudCoordinatesArray.push( parseFloat(coordsArray[i+1]) - parseInt(responseData.minZvalue ) );
                         }
 
+                        responseData.pointCloudCoordinates = pointCloudCoordinatesArray.join(" ");
+
                         responseData.maxXvalue -= parseInt( responseData.minXvalue);
                         responseData.minXvalue -= parseInt( responseData.minXvalue);
 
@@ -4448,11 +4625,29 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
 
                         responseData.width  = responseData.maxXvalue - responseData.minXvalue + 1;
                         responseData.height = responseData.maxZvalue - responseData.minZvalue + 1;
+
+                        // extract color
+                        var colors = $(receivedData).find(String("tupleList")).text();
+
+                        if(colors && colors.length )
+                        {
+                            var colorArrayRGB = colors.split(" ");
+                            console.log("colorArray",colorArrayRGB.length);
+                            var colorArray = [];
+                            for(var n=0;n<colorArrayRGB.length;n++)
+                            {
+                                var tmp = colorArrayRGB[n].split(",");
+                                for(var m=0;m<tmp.length;m++)
+                                    colorArray.push(tmp[m] / 255.0 ); // transform from [0-255] to [0-1]
+                            }
+                            responseData.vertexColors = colorArray.join(" ");
+                        }
+
                     }
                     else
                         console.log("No coords");
 
-                    responseData.pointCloudCoordinates = pointCloudCoordinatesArray.join(" ");
+
                 }
                 catch(err)
                 {   alert(err); }
@@ -4937,7 +5132,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.receiveData = function( da
     if( failedData == data.length) return;
 
     // create transform
-    this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0);
+    this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
     this.root.appendChild(this.transformNode);
 
     // create terrain
@@ -6069,7 +6264,7 @@ EarthServerGenericClient.Model_WCSPointCloud.prototype.setSpecificElement= funct
 {
     // change point size
     var id = "EarthServerGenericClient_SliderCell_ps_"+this.index;
-    EarthServerGenericClient.appendGenericSlider(element,id,"Point Size",this.index,1,10,this.pointSize, EarthServerGenericClient.MainScene.updatePointSize);
+    EarthServerGenericClient.appendGenericSlider(element,id,"Point Size",this.index,1,20,this.pointSize, EarthServerGenericClient.MainScene.updatePointSize);
 };//Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
 
@@ -6519,11 +6714,34 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
     cdiv=null;
     cp=null;
 
+    //Create Div Reset
+    /*var reset = document.createElement("h3");
+    reset.innerHTML = "Reset";
+    var rdiv = document.createElement("div");
+    var rp   = document.createElement("p");
+
+    var rbutton = document.createElement('button');
+    rbutton.setAttribute("onclick", "EarthServerGenericClient.MainScene.resetScene();return false;");
+    rbutton.innerHTML = "RESET";
+
+   rp.appendChild(rbutton);
+   rbutton = null;
+
+    rdiv.appendChild(rp);
+    UI_DIV.appendChild(reset);
+    UI_DIV.appendChild(rdiv);
+
+    rdiv=null;
+    rp=null;*/
+
     //Create Divs for a Light sources
     for(i=0; i<EarthServerGenericClient.MainScene.getLightCount();i++)
     {
         var lightHeader = document.createElement("h3");
-        lightHeader.innerHTML = "Light " + i;
+        if(i == 0)
+            lightHeader.innerHTML = "Light";
+        else
+            lightHeader.innerHTML = "Light " + i;
         var lightDiv = document.createElement("div");
 
         UI_DIV.appendChild(lightHeader);

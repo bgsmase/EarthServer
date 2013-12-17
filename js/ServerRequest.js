@@ -9,6 +9,7 @@ var EarthServerGenericClient = EarthServerGenericClient || {};
 EarthServerGenericClient.ServerResponseData = function () {
     this.heightmap = null;          // Heightmap
     this.pointCloudCoordinates = null; // Point cloud coordinates
+    this.vertexColors = null;       // Color values for vertices or points
     this.noDataValue = undefined;   // The value that should be considered as NODATA.
     this.heightmapUrl = "";         // If available, you can use the link as alternative.
     this.texture = new Image();     // Texture as image object
@@ -31,7 +32,8 @@ EarthServerGenericClient.ServerResponseData = function () {
     this.heightmapAsString = false;  // Flag if heightmap is encoded as a array of arrays(default) or as a string with csv.
     this.validateHeightMap = true;   // Flag if heightmap should be checked in validate().
     this.validateTexture   = true;   // Flag if the texture should be checked in validate().
-    this.validatePointCloud = false; // Flag if the point cloud should be in validate().
+    this.validatePointCloud = false; // Flag if the point cloud should be checked in validate().
+    this.validateVertexColors = false; // Flag if the vertex colors should be checked in validate().
     this.removeAlphaChannel = false; // Flag if the alpha channel contains e.g. height data it should be removed for the texture
 
     /**
@@ -61,6 +63,13 @@ EarthServerGenericClient.ServerResponseData = function () {
             if( this.pointCloudCoordinates === null) return false;
             if( this.width === null || this.height === null){    return false;   }
             if( this.minHMvalue === Number.MAX_VALUE || this.maxHMvalue === -Number.MAX_VALUE){    return false;   }
+        }
+
+        // vertex/point colors
+        if( this.validateVertexColors )
+        {
+            if( this.vertexColors === null ) return false;
+            if( this.vertexColors.length === 0) return false;
         }
 
         //Everything OK
@@ -350,13 +359,9 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
             data: request,
             success: function(receivedData)
             {
-
-                //console.log(receivedData);
-
                 try{
                     EarthServerGenericClient.MainScene.timeLogEnd("WCS PointCloud Coverage: " + callback.name );
-                    var coords = $(receivedData).find(String("SimpleMultiPoint")).text();
-
+                    var coords = $(receivedData).find(String("positions")).text();
 
                     if(coords && coords.length )
                     {
@@ -364,6 +369,7 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                         {   coords = coords.substr(1);  }
 
                         var coordsArray = coords.split(" ");
+                        console.log("coordsArray",coordsArray.length);
 
                         // check all coords to set min,max,width&height values
                         for(var i=0; i+2< coordsArray.length; i+=3)
@@ -396,6 +402,8 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                             pointCloudCoordinatesArray.push( parseFloat(coordsArray[i+1]) - parseInt(responseData.minZvalue ) );
                         }
 
+                        responseData.pointCloudCoordinates = pointCloudCoordinatesArray.join(" ");
+
                         responseData.maxXvalue -= parseInt( responseData.minXvalue);
                         responseData.minXvalue -= parseInt( responseData.minXvalue);
 
@@ -407,11 +415,29 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
 
                         responseData.width  = responseData.maxXvalue - responseData.minXvalue + 1;
                         responseData.height = responseData.maxZvalue - responseData.minZvalue + 1;
+
+                        // extract color
+                        var colors = $(receivedData).find(String("tupleList")).text();
+
+                        if(colors && colors.length )
+                        {
+                            var colorArrayRGB = colors.split(" ");
+                            console.log("colorArray",colorArrayRGB.length);
+                            var colorArray = [];
+                            for(var n=0;n<colorArrayRGB.length;n++)
+                            {
+                                var tmp = colorArrayRGB[n].split(",");
+                                for(var m=0;m<tmp.length;m++)
+                                    colorArray.push(tmp[m] / 255.0 ); // transform from [0-255] to [0-1]
+                            }
+                            responseData.vertexColors = colorArray.join(" ");
+                        }
+
                     }
                     else
                         console.log("No coords");
 
-                    responseData.pointCloudCoordinates = pointCloudCoordinatesArray.join(" ");
+
                 }
                 catch(err)
                 {   alert(err); }

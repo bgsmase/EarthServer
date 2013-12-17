@@ -20,6 +20,12 @@ EarthServerGenericClient.AbstractTerrain = function()
     {};
 
     /**
+     * @ignore Empty default stub lightUpdate() function.
+     */
+    this.lightUpdate = function(lightDomElement)
+    {};
+
+    /**
      * Clears the list of already defined appearances.
      */
     this.clearDefinedAppearances = function()
@@ -40,6 +46,27 @@ EarthServerGenericClient.AbstractTerrain = function()
     this.clearMaterials = function()
     {
         this.materialNodes = [];
+    };
+
+    this.getMinDataValueAtAxis = function(axis)
+    {
+        if( this.data)
+        {
+            var ret = 0;
+            switch(axis)
+            {
+                case 0: ret = this.data.minXvalue; break;
+                case 1: ret = this.data.minHMvalue; break;
+                case 2: ret = this.data.minZvalue; break;
+            }
+
+            return ret;
+        }
+        else
+        {
+            console.log("EarthServerGenericClient::AbstractTerrain::getMinDataValueAtAxis(): this.data is not defined");
+            return 0;
+        }
     };
 
     /**
@@ -1025,8 +1052,11 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
     this.data = data;
     this.index = index;
     this.pointSize = parseFloat(pointSize);
+    // Shader fields IDs for various attributes
     this.transparencyFieldID = "EarthServerGenericClient_model_"+index+"_transparencyField";
     this.pointSizeFieldID    = "EarthServerGenericClient_model_"+index+"_pointSizeField";
+    this.lightPosID          = "EarthServerGenericClient_model_"+index+"_lightPosField";
+    this.lightColorID        = "EarthServerGenericClient_model_"+index+"_lightColorField";
 
     this.createTerrain = function()
     {
@@ -1039,8 +1069,11 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         pointSet.setAttribute("solid","false");
         var coords = document.createElement("coordinate");
         coords.setAttribute("point", data.pointCloudCoordinates);
+        var color = document.createElement("color");
+        color.setAttribute("color", data.vertexColors );
 
         pointSet.appendChild(coords);
+        pointSet.appendChild(color);
         this.appendShader( this.appearance);
         shape.appendChild(this.appearance);
         shape.appendChild(pointSet);
@@ -1052,6 +1085,7 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         this.appearance = null;
 
         EarthServerGenericClient.MainScene.reportProgress(index);
+        EarthServerGenericClient.MainScene.addLightObserver( this.index );
     };
 
     this.appendShader = function(domElement)
@@ -1075,29 +1109,35 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         field3.setAttribute("value",String(this.pointSize.toFixed(2)) );
         cShader.appendChild(field3);
 
+        var field4  = document.createElement("field");
+        field4.setAttribute("id", this.lightPosID);
+        field4.setAttribute("name","lightPos");
+        field4.setAttribute("type","SFVec3f");
+        field4.setAttribute("value",EarthServerGenericClient.MainScene.getLightPosition(0) );
+        cShader.appendChild(field4);
+        var field5  = document.createElement("field");
+        field5.setAttribute("id", this.lightColorID);
+        field5.setAttribute("name","lightColor");
+        field5.setAttribute("type","SFVec3f");
+        field5.setAttribute("value",EarthServerGenericClient.MainScene.getLightColor(0) );
+        cShader.appendChild(field5);
+
+
         var vertexCode = "attribute vec3 position; \n";
+        vertexCode += "attribute vec3 color; \n";
         vertexCode += "uniform mat4 modelViewProjectionMatrix; \n";
         vertexCode += "uniform mat4 projectionMatrix; \n";
-        vertexCode += "varying vec3 fPosition; \n";
-        vertexCode += "varying vec3 fNormal; \n";
         vertexCode += "uniform float pointSize; \n";
+        vertexCode += "uniform vec3 lightPos; \n";
+        vertexCode += "varying vec3 vPos; \n";
+        vertexCode += "varying vec3 vCol; \n";
+        vertexCode += "varying vec3 vertex_to_light_vector; \n";
         vertexCode += "void main() { \n";
-        vertexCode += "fPosition = position; \n";
+        vertexCode += "vCol = color; \n";
+        vertexCode += "vPos = vec3(modelViewProjectionMatrix * vec4(position, 1.0)); \n";
         vertexCode += "gl_Position = modelViewProjectionMatrix * vec4(position, 1.0); \n";
+        vertexCode += "vertex_to_light_vector = vec3(lightPos - vPos); \n";
         vertexCode += "gl_PointSize = pointSize; } \n";
-
-        /*var vertexCode = "precision highp float; \n";
-        vertexCode += "attribute vec3 position; \n";
-        vertexCode += "attribute vec3 normal; \n";
-        vertexCode += "uniform mat4 modelViewMatrix; \n";
-        vertexCode += "uniform mat4 projectionMatrix; \n";
-        vertexCode += "varying vec3 fPosition; \n";
-        vertexCode += "void main() \n";
-        vertexCode += "{ \n";
-        vertexCode += "vec4 pos = modelViewMatrix * vec4(position, 1.0); \n";
-        vertexCode += "gl_PointSize = " + pointSize.toFixed(2) +"; \n";
-        vertexCode += "fPosition = pos; \n";
-        vertexCode += "gl_Position = projectionMatrix * pos;} \n";*/
 
         var shaderPartVertex = document.createElement("shaderPart");
         shaderPartVertex.setAttribute("type","VERTEX");
@@ -1111,23 +1151,16 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         fragmentCode += "#endif \n";
         fragmentCode += "uniform vec3 matCol; \n";
         fragmentCode += "uniform float transparency; \n";
+        fragmentCode += "uniform vec3 lightPos; \n";
+        fragmentCode += "uniform vec3 lightColor; \n";
+        fragmentCode += "varying vec3 vPos; \n";
+        fragmentCode += "varying vec3 vCol; \n";
+        fragmentCode += "varying vec3 vertex_to_light_vector; \n";
         fragmentCode += "void main() { \n";
-        fragmentCode += "gl_FragColor = vec4(matCol, transparency); } \n";
-
-        /*var fragmentCode = "#ifdef GL_FRAGMENT_PRECISION_HIGH \n";
-        fragmentCode += "precision highp float; \n";
-        fragmentCode += "#else \n";
-        fragmentCode += "precision mediump float; \n";
-        fragmentCode += "#endif \n";
-        fragmentCode += "uniform vec2 resolution; \n";
-        fragmentCode += "varying vec3 fPosition; \n";
-        fragmentCode += "void main() { \n";
-        fragmentCode += "float k = (fPosition.z) / (5.0); \n";
-        fragmentCode += "vec2 ss = vec2(gl_FragCoord.x / resolution.x, gl_FragCoord.y/resolution.y); \n";
-        fragmentCode += "gl_FragColor = vec4(ss, k, 1.0); \n";
-        //fragmentCode += "if (length(ss - vec2(0.5)) > 10.55) \n";
-        //agmentCode += "discard; \n";
-        fragmentCode += "} \n";*/
+        fragmentCode += "vec3 normalized_vertex_to_light_vector = normalize(vertex_to_light_vector); \n";
+        fragmentCode += "float DiffuseTerm = clamp(dot(vec3(0.0, 1.0, 0.0), normalized_vertex_to_light_vector), 0.0, 1.0); \n";
+        fragmentCode += "gl_FragColor = vec4(vCol*DiffuseTerm, transparency); } \n";
+        //fragmentCode += "gl_FragColor = vec4(vCol, transparency); } \n";
 
 
         var shaderPartFragment = document.createElement("shaderPart");
@@ -1169,6 +1202,30 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
             pointSizeField.setAttribute("value", String(value));
         else
             console.log("EarthServerGenericClient.PointCloudTerrain: Can't find point size field.")
-    }
+    };
+
+    /**
+     * Callback function when the light was changed.
+     * @param lightElement
+     */
+    this.lightUpdate = function(lightElement)
+    {
+        var position = lightElement.getAttribute("location");
+        this.setLightPosition(position);
+    };
+
+    /**
+     * Sets the position of the light source effecting the point cloud.
+     * @param lightPosition - Position of light source.
+     */
+    this.setLightPosition = function(lightPosition)
+    {
+        var lightPosField = document.getElementById( this.lightPosID);
+
+        if( lightPosField)
+           lightPosField.setAttribute("value",String(lightPosition));
+        else
+            console.log("EarthServerGenericClient.PointCloudTerrain: Can't find light position field.")
+    };
 };
 EarthServerGenericClient.PointCloudTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
