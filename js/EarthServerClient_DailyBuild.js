@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 17.12.1013
+ * @version 0.7 alpha 28.01.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -149,6 +149,7 @@ EarthServerGenericClient.SceneManager = function()
     var keyMapping = {};            // Stores the keys for certain events
     var globalElevationValue = 10;  // Stores the last used global elevation value
     var lightObserver = []; // Array of light observer
+    var drawGrid = false;           // Flag if a grid shall be drawn.
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -444,6 +445,34 @@ EarthServerGenericClient.SceneManager = function()
     this.setDrawCube = function(value)
     {
         drawCube = value;
+    };
+
+    /**
+     * Draws grids on every sides of the cube except the top.
+     * @param cubeMinX - Minimum value on the x-axis.
+     * @param cubeMaxX - Maximum value on the x-axis
+     * @param cubeMinY - Minimum value on the y-axis.
+     * @param cubeMaxY - Maximum value on the y-axis
+     * @param cubeMinZ - Minimum value on the z-axis.
+     * @param cubeMaxZ - Maximum value on the z-axis
+     * @param unitSize - Size after a grid line will be drawn.
+     */
+    this.setDrawGrid = function(cubeMinX,cubeMaxX,cubeMinY,cubeMaxY,cubeMinZ,cubeMaxZ,unitSize)
+    {
+        if(cubeMinX < cubeMaxX && cubeMinY < cubeMaxY && cubeMinZ < cubeMaxZ)
+        {
+            if(unitSize > 0 || !isNaN(unitSize))
+            {
+                drawGrid = true;
+                this.GridMinAxisValue = [cubeMinX,cubeMinY,cubeMinZ];
+                this.GridMaxAxisValue = [cubeMaxX,cubeMaxY,cubeMaxZ];
+                this.GridUnitSize = unitSize;
+            }
+            else
+            {   console.log("EarthServerGenericClient::drawGrid: UnitSize must be a positive number.");    }
+        }
+        else
+        {   console.log("EarthServerGenericClient::drawGrid: At least one minimum value is bigger than the maximum value."); }
     };
 
     /**
@@ -1132,6 +1161,16 @@ EarthServerGenericClient.SceneManager = function()
             lineset = null;
             coords = null;
             points = null;
+
+            // draw the grid if set
+            if( drawGrid)
+            {
+                this.appendCubeGrid(scene,this.GridMinAxisValue[0],this.GridMaxAxisValue[0],
+                    this.GridMinAxisValue[1],this.GridMaxAxisValue[1],
+                    this.GridMinAxisValue[2],this.GridMaxAxisValue[2],
+                    this.GridUnitSize);
+            }
+
         }
 
         var trans = document.createElement('Transform');
@@ -1148,6 +1187,353 @@ EarthServerGenericClient.SceneManager = function()
 
         if( oculusRift )
         {   this.appendVRShader(x3dID,sceneID);  }
+    };
+
+    this.appendCubeGridShader = function(domElement, normal, color)
+    {
+        /*
+            Back face culling does not work is it should.
+            To sheck if backface > 0.245 is a hack for now.
+            TODO: FIX it.
+         */
+
+        var cShader = document.createElement("composedShader");
+        var field1  = document.createElement("field");
+        field1.setAttribute("name","GridNormal");
+        field1.setAttribute("type","SFVec3f");
+        field1.setAttribute("value",normal);
+        cShader.appendChild(field1);
+
+        var field2  = document.createElement("field");
+        field2.setAttribute("name","matCol");
+        field2.setAttribute("type","SFVec3f");
+        field2.setAttribute("value",color);
+        cShader.appendChild(field2);
+
+        var vertexCode = "attribute vec3 position; \n";
+        vertexCode += "uniform mat4 normalMatrix; \n";
+        vertexCode += "uniform mat4 modelViewProjectionMatrix; \n";
+        vertexCode += "uniform mat4 modelViewMatrix; \n";
+        vertexCode += "uniform mat4 projectionMatrix; \n";
+        vertexCode += "uniform vec3 GridNormal; \n";
+        vertexCode += "varying float backface; \n";
+        vertexCode += "varying vec4 fragNormal; \n";
+        vertexCode += "varying vec4 fragPosition; \n";
+        vertexCode += "void main() { \n";
+        //vertexCode += "fragNormal = (normalMatrix * vec4(GridNormal,0.0)); \n";
+        //vertexCode += "fragPosition = (modelViewProjectionMatrix* vec4(position, 1.0)); \n";
+        vertexCode += "vec4 transformGridNormal = (normalMatrix * vec4(GridNormal,0.0)); \n";
+        vertexCode += "backface = dot(transformGridNormal, vec4(0.0, 0.0, 1.0, 0.0)); \n";
+        vertexCode += "gl_Position = modelViewProjectionMatrix * vec4(position, 1.0); } \n";
+
+        var shaderPartVertex = document.createElement("shaderPart");
+        shaderPartVertex.setAttribute("type","VERTEX");
+        shaderPartVertex.setAttribute("DEF","EarthServerGenericClient_GRID_VERTEXSHADER");
+        shaderPartVertex.innerHTML = vertexCode;
+        cShader.appendChild(shaderPartVertex);
+
+        var fragmentCode = "#ifdef GL_FRAGMENT_PRECISION_HIGH \n";
+        fragmentCode += "precision highp float; \n";
+        fragmentCode += "#else \n";
+        fragmentCode += "precision mediump float; \n";
+        fragmentCode += "#endif \n";
+        fragmentCode += "uniform vec3 matCol; \n";
+        fragmentCode += "varying float backface; \n";
+        fragmentCode += "varying vec4 fragNormal; \n";
+        fragmentCode += "varying vec4 fragPosition; \n";
+        fragmentCode += "void main() { \n";
+        //fragmentCode += "vec4 N = normalize(fragNormal);\n";
+        //fragmentCode += "vec4 E = fragPosition;\n";
+        //fragmentCode += "if (dot(E, N) > 0.0){ discard; }\n";
+        fragmentCode += "if( backface > 0.245 ){ discard; } \n";
+        fragmentCode += "gl_FragColor = vec4(matCol, 1.0); } \n";
+
+        var shaderPartFragment = document.createElement("shaderPart");
+        shaderPartFragment.setAttribute("type","FRAGMENT");
+        shaderPartFragment.setAttribute("DEF","EarthServerGenericClient_GRID_FRAGMENTSHADER");
+        shaderPartFragment.innerHTML = fragmentCode;
+        cShader.appendChild(shaderPartFragment);
+
+        domElement.appendChild( cShader );
+
+        cShader = null;
+        field1 = null;
+        field2 = null;
+        shaderPartVertex = null;
+        shaderPartFragment = null;
+    };
+
+    this.appendCubeGridShaderUse = function(domElement, normal, color)
+    {
+        var cShader = document.createElement("composedShader");
+        var field1  = document.createElement("field");
+        field1.setAttribute("name","GridNormal");
+        field1.setAttribute("type","SFVec3f");
+        field1.setAttribute("value",normal);
+        cShader.appendChild(field1);
+
+        var field2  = document.createElement("field");
+        field2.setAttribute("name","matCol");
+        field2.setAttribute("type","SFVec3f");
+        field2.setAttribute("value",color);
+        cShader.appendChild(field2);
+
+        var shaderPartVertex = document.createElement("shaderPart");
+        shaderPartVertex.setAttribute("type","VERTEX");
+        shaderPartVertex.setAttribute("use","EarthServerGenericClient_GRID_VERTEXSHADER");
+        cShader.appendChild(shaderPartVertex);
+
+        var shaderPartFragment = document.createElement("shaderPart");
+        shaderPartFragment.setAttribute("type","FRAGMENT");
+        shaderPartFragment.setAttribute("use","EarthServerGenericClient_GRID_FRAGMENTSHADER");
+        cShader.appendChild(shaderPartFragment);
+
+        domElement.appendChild( cShader );
+
+
+        field1 = null;
+        field2 = null;
+        shaderPartVertex = null;
+        shaderPartFragment = null;
+        cShader = null;
+    };
+
+    this.appendCubeGrid = function(root,minX,maxX,minY,maxY,minZ,maxZ,unitSize)
+    {
+        // Creates shapes and appearances for every side
+        var shapeFront   = document.createElement('Shape');
+        var linesetFront = document.createElement('IndexedLineSet');
+        linesetFront.setAttribute("colorPerVertex", "false");
+        var coordsFront = document.createElement('Coordinate');
+
+        var shapeBack   = document.createElement('Shape');
+        var linesetBack = document.createElement('IndexedLineSet');
+        linesetBack.setAttribute("colorPerVertex", "false");
+        var coordsBack = document.createElement('Coordinate');
+
+        var shapeLeft   = document.createElement('Shape');
+        var linesetLeft = document.createElement('IndexedLineSet');
+        linesetLeft.setAttribute("colorPerVertex", "false");
+        var coordsLeft = document.createElement('Coordinate');
+
+        var shapeRight   = document.createElement('Shape');
+        var linesetRight = document.createElement('IndexedLineSet');
+        linesetRight.setAttribute("colorPerVertex", "false");
+        var coordsRight = document.createElement('Coordinate');
+
+        var shapeBottom   = document.createElement('Shape');
+        var linesetBottom = document.createElement('IndexedLineSet');
+        linesetBottom.setAttribute("colorPerVertex", "false");
+        var coordsBottom = document.createElement('Coordinate');
+
+        var GridColor = "0.7 0.7 0.7 ";
+        var appearance = document.createElement('Appearance');
+        this.appendCubeGridShader(appearance,"0.0 -1.0 0.0",GridColor);
+        var appearanceFront = document.createElement('Appearance');
+        this.appendCubeGridShaderUse(appearanceFront,"0.0 0.0 -1.0",GridColor);
+        var appearanceBack = document.createElement('Appearance');
+        this.appendCubeGridShaderUse(appearanceBack,"0.0 0.0 1.0",GridColor);
+        var appearanceLeft = document.createElement('Appearance');
+        this.appendCubeGridShaderUse(appearanceLeft,"-1.0 0.0 0",GridColor);
+        var appearanceRight = document.createElement('Appearance');
+        this.appendCubeGridShaderUse(appearanceRight,"1.0 0.0 0",GridColor);
+
+        var nXLines = parseInt( (maxX - minX) / unitSize );
+        var nYLines = parseInt( (maxY - minY) / unitSize );
+        var nZLines = parseInt( (maxZ - minZ) / unitSize );
+        var xSize = cubeSizeX / nXLines;
+        var ySize = cubeSizeY / nYLines;
+        var zSize = cubeSizeZ / nZLines;
+
+        var cubeX = cubeSizeX/2.0;
+        var cubeY = cubeSizeY/2.0;
+        var cubeZ = cubeSizeZ/2.0;
+        var cubeXNeg = -cubeSizeX/2.0;
+        var cubeYNeg = -cubeSizeY/2.0;
+        var cubeZNeg = -cubeSizeZ/2.0;
+
+        var p = [];
+        var indices = "";
+        var indexCounter = 0;
+
+        // ### FRONT GRID ###
+        for(var i=1; i< nXLines;i++)
+        {
+            // vertical
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeY    + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZNeg);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        var stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsFront.setAttribute("point", stringP);
+        linesetFront.setAttribute("coordIndex",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Back GRID ###
+        for(i=1; i< nXLines;i++)
+        {
+            // vertical
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeY    + " " + cubeZ);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsBack.setAttribute("point", stringP);
+        linesetBack.setAttribute("coordIndex",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Left Grid ###
+        for( i=1; i< nZLines;i++)
+        {
+            // vertical
+            p.push(""+ cubeXNeg + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ   );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsLeft.setAttribute("point", stringP);
+        linesetLeft.setAttribute("coordIndex",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Right Grid ###
+        for( i=1; i< nZLines;i++)
+        {
+            // vertical
+            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeX + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ   );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsRight.setAttribute("point", stringP);
+        linesetRight.setAttribute("coordIndex",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Bottom Grid ###
+        for(i=1; i< nXLines;i++)
+        {
+            // Front to back
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZ);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        for( i=1; i< nZLines;i++)
+        {
+            // Side to side
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsBottom.setAttribute("point", stringP);
+        linesetBottom.setAttribute("coordIndex",indices);
+
+        shapeBottom.appendChild(appearance);
+        shapeBottom.appendChild(linesetBottom);
+        linesetBottom.appendChild(coordsBottom);
+        root.appendChild(shapeBottom);
+
+        shapeFront.appendChild(appearanceFront);
+        shapeFront.appendChild(linesetFront);
+        linesetFront.appendChild(coordsFront);
+        root.appendChild(shapeFront);
+
+        shapeBack.appendChild(appearanceBack);
+        shapeBack.appendChild(linesetBack);
+        linesetBack.appendChild(coordsBack);
+        root.appendChild(shapeBack);
+
+        shapeLeft.appendChild(appearanceLeft);
+        shapeLeft.appendChild(linesetLeft);
+        linesetLeft.appendChild(coordsLeft);
+        root.appendChild(shapeLeft);
+
+        shapeRight.appendChild(appearanceRight);
+        shapeRight.appendChild(linesetRight);
+        linesetRight.appendChild(coordsRight);
+        root.appendChild(shapeRight);
+
+        shapeFront   = null;
+        linesetFront = null;
+        coordsFront = null;
+        appearanceFront = null;
+
+        shapeBack   = null;
+        linesetBack = null;
+        coordsBack = null;
+        appearanceBack = null;
+
+        shapeLeft   = null;
+        linesetLeft = null;
+        coordsLeft = null;
+        appearanceLeft = null;
+
+        shapeRight   = null;
+        linesetRight = null;
+        coordsRight = null;
+        appearanceRight = null;
+
+        shapeBottom = null;
+        linesetBottom = null;
+        coordsBottom = null;
+
+        appearance = null;
+        material = null;
     };
 
     this.appendVRShader = function(x3dID,sceneID)
@@ -4101,7 +4487,7 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
         field5.setAttribute("type","SFVec3f");
         field5.setAttribute("value",EarthServerGenericClient.MainScene.getLightColor(0) );
         cShader.appendChild(field5);
-        
+
         var vertexCode = "attribute vec3 position; \n";
         vertexCode += "attribute vec3 color; \n";
         vertexCode += "uniform mat4 modelViewProjectionMatrix; \n";
@@ -4151,6 +4537,10 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
 
         cShader = null;
         field1 = null;
+        field2 = null;
+        field3 = null;
+        field4 = null;
+        field5 = null;
         shaderPartVertex = null;
         shaderPartFragment = null;
     };
@@ -4578,7 +4968,6 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                         {   coords = coords.substr(1);  }
 
                         var coordsArray = coords.split(" ");
-                        console.log("coordsArray",coordsArray.length);
 
                         // check all coords to set min,max,width&height values
                         for(var i=0; i+2< coordsArray.length; i+=3)
@@ -4631,7 +5020,6 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                         if(colors && colors.length )
                         {
                             var colorArrayRGB = colors.split(" ");
-                            console.log("colorArray",colorArrayRGB.length);
                             var colorArray = [];
                             for(var n=0;n<colorArrayRGB.length;n++)
                             {
