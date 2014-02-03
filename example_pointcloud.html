@@ -15,7 +15,13 @@
     <script type="text/javascript">
         // basic setup:
         EarthServerGenericClient.MainScene.setTimeLog(false);//TimeLogging: outputs time of loading and building the models to the console
+        EarthServerGenericClient.MainScene.addLightToScene(true);
         EarthServerGenericClient.MainScene.setBackground("0.8 0.8 0.95 0.4 0.5 0.85 0.3 0.5 0.85 0.31 0.52 0.85","0.9 1.5 1.57","0.8 0.8 0.95 0.4 0.5 0.85 0.3 0.5 0.85 0.31 0.52 0.85","0.9 1.5 1.57");
+
+        // some new features:
+        EarthServerGenericClient.MainScene.setDrawGrid(0,100,0,60,0,100,10);
+        EarthServerGenericClient.MainScene.setDrawCompass(true,1.57,"1 1 1","N");
+        EarthServerGenericClient.MainScene.setCubeBaseLink("http://earthserver.bgs.ac.uk/petascope?query=for%20i%20in%20(bgs_rs)%20return%20encode%20(%20%7B%20red%3A%20scale(trim(i.red%2C%20%7Bx%3A%22http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F27700%22(400000%3A450000)%2C%20y%3A%22http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F27700%22(500000%3A550000)%20%7D)%2C%20%7Bx%3A%22CRS%3A1%22(0%3A500)%2C%20y%3A%22CRS%3A1%22(0%3A500)%7D%2C%20%7B%7D)%3B%20green%3A%20scale(trim(i.green%2C%20%7Bx%3A%22http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F27700%22(400000%3A450000)%2C%20y%3A%22http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F27700%22(500000%3A550000)%20%7D)%2C%20%7Bx%3A%22CRS%3A1%22(0%3A500)%2C%20y%3A%22CRS%3A1%22(0%3A500)%7D%2C%20%7B%7D)%3B%20blue%3A%20scale(trim(i.blue%2C%20%7Bx%3A%22http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F27700%22(400000%3A450000)%2C%20y%3A%22http%3A%2F%2Fwww.opengis.net%2Fdef%2Fcrs%2FEPSG%2F0%2F27700%22(500000%3A550000)%20%7D)%2C%20%7Bx%3A%22CRS%3A1%22(0%3A500)%2C%20y%3A%22CRS%3A1%22(0%3A500)%7D%2C%20%7B%7D)%7D%2C%20%22png%22%20)");
 
         // create the models:
         $(document).ready(function()
@@ -25,7 +31,7 @@
             pointcloud.setURL("http://kahlua.eecs.jacobs-university.de:8081/petascope/wcs2");
             pointcloud.setCoverage("ParkTunnel");
             pointcloud.setAreaOfInterest(456376,339864,456378,339870,52,53);
-            pointcloud.setPointSize(2);
+            pointcloud.setPointSize(4);
             pointcloud.setOffset(0,0.1,0);
             pointcloud.setDiffuseColor("1 0.4 0.2");
             pointcloud.setTransparency(0.1);

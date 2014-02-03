@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 28.01.2014
+ * @version 0.7 alpha 03.02.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -150,6 +150,11 @@ EarthServerGenericClient.SceneManager = function()
     var globalElevationValue = 10;  // Stores the last used global elevation value
     var lightObserver = []; // Array of light observer
     var drawGrid = false;           // Flag if a grid shall be drawn.
+    var drawCompass = false;        // Flag if the compass shall be drawn
+    var compassRotation = 0;        // Rotation of the compass
+    var compassColor = "0.8 0.8 0.8";// Color of the compass
+    var compassLabel = "N";         // Label for the compass
+    var CubeBaseQuery = null;        // A WMS image query for the base of the cube
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -296,6 +301,15 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Sets the link or query for the image that should be displayed at the bottom of the cube.
+     * @param query - The query or link.
+     */
+    this.setCubeBaseLink = function( query )
+    {
+        CubeBaseQuery = query;
+    };
+
+    /**
      * Adds custom viewpoints to the scene and UI.
      * Viewpoints can be put out to the debug console by pressing 'd' and 'v'.
      * @param name - Name of the Viewpoint for the UI.
@@ -379,7 +393,6 @@ EarthServerGenericClient.SceneManager = function()
         defaultSpecularColor = color;
     };
 
-
     /**
      * Return the default specular color.
      * @returns {string} - Default specular color in rgb.
@@ -445,6 +458,24 @@ EarthServerGenericClient.SceneManager = function()
     this.setDrawCube = function(value)
     {
         drawCube = value;
+    };
+
+    /**
+     * Sets if the compass should be drawn.
+     * @param value - Boolean value.
+     * @param rotation - Rotation of the compass in [0 - 2*PI] (Optional).
+     * @param color - Color of the compass (Optional).
+     * @param label - Label for the compass (Optional).
+     */
+    this.setDrawCompass = function(value, rotation, color, label )
+    {
+        drawCompass = value;
+        if( drawCompass && rotation !== undefined )
+            compassRotation = rotation;
+        if( drawCompass && color !== undefined)
+            compassColor = color;
+        if( drawCompass && label !== undefined)
+            compassLabel = label;
     };
 
     /**
@@ -1173,6 +1204,46 @@ EarthServerGenericClient.SceneManager = function()
 
         }
 
+        if( CubeBaseQuery !== null)
+        {
+            var baseShape        = document.createElement("Shape");
+            var baseAppearance   = document.createElement("Appearance");
+            var baseMaterial     = document.createElement("Material");
+            var baseImageTexture = document.createElement("ImageTexture");
+            var baseTrisSet      = document.createElement("IndexedTriangleSet");
+            var baseCoords       = document.createElement("Coordinate");
+            var basePoints = "";
+
+            baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
+            baseImageTexture.setAttribute("url", CubeBaseQuery);
+            basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZ + " ";
+            basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZ + " ";
+            basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZNeg + " ";
+            basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZNeg + " ";
+            baseTrisSet.setAttribute("lit",'false');
+            baseTrisSet.setAttribute("index","0 1 2 2 3 0");
+
+            baseCoords.setAttribute("point", basePoints);
+            baseTrisSet.appendChild(baseCoords);
+            baseAppearance.appendChild(baseImageTexture);
+            baseAppearance.appendChild(baseMaterial);
+            baseShape.appendChild(baseAppearance);
+            baseShape.appendChild(baseTrisSet);
+            scene.appendChild(baseShape);
+
+            baseShape = null;
+            baseAppearance = null;
+            baseMaterial = null;
+            baseImageTexture = null;
+            baseTrisSet = null;
+            baseCoords = null;
+        }
+
+        if( drawCompass)
+        {
+            this.appendCompass(scene);
+        }
+
         var trans = document.createElement('Transform');
         trans.setAttribute("id", "trans");
 
@@ -1187,6 +1258,86 @@ EarthServerGenericClient.SceneManager = function()
 
         if( oculusRift )
         {   this.appendVRShader(x3dID,sceneID);  }
+    };
+
+    this.appendCompass = function(scene)
+    {
+        var compassTrans        = document.createElement("Transform");
+        var compassShape        = document.createElement("Shape");
+        var compassAppearance   = document.createElement("Appearance");
+        var compassMaterial     = document.createElement("Material");
+        var trisSet             = document.createElement("IndexedTriangleSet");
+        var itsCoords           = document.createElement("Coordinate");
+        var itsPoints = "";
+        var itsIndex  = "";
+
+        var compassTextTransform  = document.createElement("Transform");
+        var compassRotTransform  = document.createElement("Transform");
+        var compassTextShape      = document.createElement('shape');
+        var compassTextAppearance = document.createElement('appearance');
+        var compassTextMaterial   = document.createElement('material');
+        var compassText           = document.createElement('text');
+        var fontStyle             = document.createElement('fontStyle');
+
+        compassTextMaterial.setAttribute('diffuseColor', compassColor );
+        compassText.setAttribute('string', compassLabel);
+        compassText.setAttribute('solid', 'false');
+        fontStyle.setAttribute('family', 'calibri');
+        fontStyle.setAttribute('style', 'bold');
+        compassRotTransform.setAttribute("rotation","0 0 1 -1.57 ");
+        compassTextTransform.setAttribute('rotation', '1 0 0 -1.57');
+        compassTextTransform.setAttribute('translation', "4 0 0");
+        compassText.appendChild(fontStyle);
+        compassTextAppearance.appendChild(compassTextMaterial);
+        compassTextShape.appendChild(compassTextAppearance);
+        compassTextShape.appendChild(compassText);
+        compassRotTransform.appendChild(compassTextShape);
+        compassTextTransform.appendChild(compassRotTransform);
+        compassTrans.appendChild( compassTextTransform);
+
+        // Build compass coords
+        itsPoints += "-3 0 -0.5 ";
+        itsPoints += "-3 0 0.5 ";
+        itsPoints += "1 0 -0.5 ";
+        itsPoints += "1 0 0.5 ";
+        itsPoints += "1 0 -1.0 ";
+        itsPoints += "1 0 1.0 ";
+        itsPoints += "3 0 0.0";
+
+        // Build compass index
+        itsIndex += "0 1 2 1 3 2 4 5 6";
+
+        compassTrans.setAttribute("translation", "0 " + (-cubeSizeY/2) + " " + (cubeSizeZ*0.75));
+        compassTrans.setAttribute("scale", "" + (cubeSizeX/20) + " " + (cubeSizeY/10) + " " + (cubeSizeZ/10));
+        compassTrans.setAttribute("rotation","0 1 0 "+ compassRotation);
+        compassTrans.setAttribute("id", "EarthServerGenericClient_CompassTrans");
+        compassMaterial.setAttribute("diffuseColor",compassColor);
+        itsCoords.setAttribute("point", itsPoints);
+        trisSet.setAttribute("index", itsIndex);
+        trisSet.setAttribute("solid", "false");
+
+        compassAppearance.appendChild(compassMaterial);
+        compassShape.appendChild(compassAppearance);
+        trisSet.appendChild(itsCoords);
+        compassShape.appendChild(trisSet);
+        compassTrans.appendChild(compassShape);
+        scene.appendChild(compassTrans);
+
+        compassTextTransform  = null;
+        compassRotTransform   = null;
+        compassTextShape      = null;
+        compassTextAppearance = null;
+        compassTextMaterial   = null;
+        compassText           = null;
+        fontStyle             = null;
+
+        itsCoords = null;
+        trisSet = null;
+        compassMaterial = null;
+        compassAppearance = null;
+        compassShape = null;
+        compassTrans = null;
+
     };
 
     this.appendCubeGridShader = function(domElement, normal, color)
@@ -1745,6 +1896,11 @@ EarthServerGenericClient.SceneManager = function()
 
         axisLabels = new EarthServerGenericClient.AxisLabels(cubeSizeX/2, cubeSizeY/2, cubeSizeZ/2);
         axisLabels.createAxisLabels(xLabel,yLabel,zLabel);
+
+        if( drawGrid)
+            axisLabels.createAxisGridLabels( this.GridMinAxisValue[0], this.GridMaxAxisValue[0],
+                                            this.GridMinAxisValue[1], this.GridMaxAxisValue[1],
+                                            this.GridMinAxisValue[2], this.GridMaxAxisValue[2] );
     };
 
     /**
@@ -7812,15 +7968,15 @@ EarthServerGenericClient.AxisLabels = function(xSize, ySize, zSize, textHover)
     };
 
     /**
-     * @description This (private) function creates the needed x3dom nodes.
+     * @description This (private) function creates the x3dom text nodes for the axis labels.
      *
      * @param axis
      * Which axis do you want? Available: x, y, z
      *
      * @param side
-     * Choose the side of the axis. <br>
-     * Available for x: front (default), back and top. <br>
-     * Available for y: front (default), back, left and right. <br>
+     * Choose the side of the axis.
+     * Available for x: front (default), back and top.
+     * Available for y: front (default), back, left and right.
      * Available for z: front (default), back and top.
      *
      * @param label
@@ -7846,7 +8002,6 @@ EarthServerGenericClient.AxisLabels = function(xSize, ySize, zSize, textHover)
         shape.appendChild(text);
         textTransform.appendChild(shape);
 
-        //var home = document.getElementById('x3dScene');
         var home = document.getElementById('AnnotationsGroup');
         var rotationTransform = document.createElement('transform');
 
@@ -7908,5 +8063,166 @@ EarthServerGenericClient.AxisLabels = function(xSize, ySize, zSize, textHover)
         transforms[transforms.length]=textTransform;
         rotationTransform.appendChild(textTransform);
         home.appendChild(rotationTransform);
+
+        textTransform = null;
+        shape = null;
+        appearance = null;
+        material = null;
+        text = null;
+        fontStyle = null;
+        home = null;
+        rotationTransform = null;
+    }
+
+    /**
+     * @description This function generates grid labels on all three axis (x,y,z). The labels will be
+     * added on each side (except bottom).
+     */
+    this.createAxisGridLabels = function(xLabelMin, xLabelMax, yLabelMin, yLabelMax, zLabelMin, zLabelMax)
+    {
+        createGridLabel("x", "front", "min", xLabelMin);
+        createGridLabel("x", "front", "max", xLabelMax);
+      /*  createGridLabel("x", "back",  "min", xLabelMin);
+        createGridLabel("x", "back",  "max", xLabelMax);
+        createGridLabel("x", "top",   "min", xLabelMin);
+        createGridLabel("x", "top",   "max", xLabelMax);*/
+
+       /* createGridLabel("y", "front", "min", yLabelMin);
+        createGridLabel("y", "front", "max", yLabelMax);
+        createGridLabel("y", "back",  "min", yLabelMin);
+        createGridLabel("y", "back",  "max", yLabelMax); */
+        createGridLabel("y", "left",  "min", yLabelMin);
+        createGridLabel("y", "left",  "max", yLabelMax);
+        /*createGridLabel("y", "right", "min",yLabelMin);
+        createGridLabel("y", "right", "max",yLabelMax);*/
+
+        /*createGridLabel("z", "front", "min", zLabelMin);
+        createGridLabel("z", "front", "max", zLabelMax);
+        createGridLabel("z", "back", "min", zLabelMin);
+        createGridLabel("z", "back", "max", zLabelMax);*/
+        createGridLabel("z", "top",  "min", zLabelMin);
+        createGridLabel("z", "top",  "max", zLabelMax);
+    };
+
+    /**
+     * @description This (private) function creates the needed x3dom nodes.
+     *
+     * @param axis
+     * Which axis do you want? Available: x, y, z
+     *
+     * @param side
+     * Choose the side of the axis.
+     * Available for x: front (default), back and top.
+     * Available for y: front (default), back, left and right.
+     * Available for z: front (default), back and top.
+     *
+     * @param minmax
+     * Flag if its the minimum or maximum value for this axis
+     *
+     * @param label
+     * This text will appear at the given axis.
+     */
+    function createGridLabel(axis, side, minmax, label)
+    {
+        //Setup text
+        var textTransform = document.createElement('transform');
+        textTransform.setAttribute('scale', xSize/10 + " " + ySize/10 + " " + zSize/10);
+        var shape = document.createElement('shape');
+        var appearance = document.createElement('appearance');
+        var material = document.createElement('material');
+        material.setAttribute('emissiveColor', fontColor);
+        var text = document.createElement('text');
+        text.setAttribute('string', label);
+        var fontStyle = document.createElement('fontStyle');
+        fontStyle.setAttribute('family', 'calibri');
+        fontStyle.setAttribute('style', 'bold');
+        text.appendChild(fontStyle);
+        appearance.appendChild(material);
+        shape.appendChild(appearance);
+        shape.appendChild(text);
+        textTransform.appendChild(shape);
+
+        var home = document.getElementById('AnnotationsGroup');
+        var rotationTransform = document.createElement('transform');
+
+        if(axis=="x")
+        {
+            var xtrans = -xSize+hover;
+            if(minmax === "max")
+                xtrans = xSize-hover;
+
+            textTransform.setAttribute('translation', "" + xtrans + " "+ (ySize+hover) + " " + zSize);
+
+            if(side=="back")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 3.14');
+            }
+            else if(side=="top")
+            {
+                textTransform.setAttribute('rotation', '1 0 0 -1.57');
+                textTransform.setAttribute('translation', "0 " + -ySize + " " + (-zSize-hover));
+            }
+            textNodesX[textNodesX.length] = text;
+        }
+        else if(axis=="y")
+        {
+            var ytrans = -ySize+hover;
+            if(minmax === "max")
+                ytrans = ySize-hover;
+
+            textTransform.setAttribute('translation', -(xSize+hover) + " "+ ytrans + " " + zSize);
+            textTransform.setAttribute('rotation', '0 0 1 1.57');
+
+            if(side=="back")
+            {
+                textTransform.setAttribute('translation', (xSize+hover) + " "+ ytrans + " " + zSize);
+                textTransform.setAttribute('rotation', '0 0 1 4.74');
+                rotationTransform.setAttribute('rotation', '1 0 0 3.14');
+            }
+            else if(side=="left")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 -1.57');
+            }
+            else if(side=="right")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 1.57');
+            }
+            textNodesY[textNodesY.length] = text;
+        }
+        else if(axis=="z")
+        {
+            var ztrans = zSize/2+hover;
+            if(minmax === "max")
+                ztrans = -zSize/2-hover;
+
+            textTransform.setAttribute('translation', xSize + " " + (ySize+hover) + " "+ ztrans);
+            textTransform.setAttribute('rotation', '0 1 0 1.57');
+            if(side=="back")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 3.14');
+            }
+            else if(side=="top")
+            {
+                textTransform.setAttribute('rotation', '0 1 0 1.57');
+                textTransform.setAttribute('translation', "0 0 " + ztrans);
+
+                rotationTransform.setAttribute('rotation', '0 0 1 -4.71');
+                rotationTransform.setAttribute('translation', -(xSize+hover) + " " + -ySize + " " + ztrans);
+            }
+            textNodesZ[textNodesZ.length] = text;
+        }
+
+        transforms[transforms.length]=textTransform;
+        rotationTransform.appendChild(textTransform);
+        home.appendChild(rotationTransform);
+
+        textTransform = null;
+        shape = null;
+        appearance = null;
+        material = null;
+        text = null;
+        fontStyle = null;
+        home = null;
+        rotationTransform = null;
     }
 };
