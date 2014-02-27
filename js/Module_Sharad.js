@@ -192,51 +192,6 @@ EarthServerGenericClient.Module_Sharad.prototype.receiveData = function(data)
 };
 
 /**
- * Sets the index of the scene model the sharad module is bound to.
- * @param index - Index of the scene model.
- */
-EarthServerGenericClient.Module_Sharad.prototype.setBoundModuleIndex = function(index)
-{
-    if(index === this.index)//prevent to bind this module to itself
-    {
-        console.log("Module_Sharad: Can't bind module to itself.");
-    }
-    else
-    {
-        console.log("Module_Sharad: Bound to model: " + index);
-        this.boundModelIndex = index;
-    }
-};
-
-/**
- * Returns the index of the model sharad module is bound to.
- * @returns {number} - Index of the model or -1 if unbound.
- */
-EarthServerGenericClient.Module_Sharad.prototype.getBoundModuleIndex = function()
-{
-    return this.boundModelIndex;
-};
-
-/**
- * Resets the modelIndex sharad module is bound to back to -1 and marks it as unbound.
- */
-EarthServerGenericClient.Module_Sharad.prototype.releaseBinding = function()
-{
-    this.boundModelIndex = -1;
-};
-
-/**
- * If sharad module is bound to another module the sharad module shall move when the other module is moved.
- * This function shall receive the delta of the positions every time the module is moved.
- * @param axis - Axis of the movement.
- * @param delta - Delta to the last position.
- */
-EarthServerGenericClient.Module_Sharad.prototype.movementUpdateBoundModule = function(axis,delta)
-{
-   EarthServerGenericClient.MainScene.updateOffsetByDelta(this.index,axis,delta);
-};
-
-/**
  * This function notifies sharad module that the bound module's elevation was changed.
  * All annotation will be checked and altered in their position.
  */
@@ -250,18 +205,18 @@ EarthServerGenericClient.Module_Sharad.prototype.elevationUpdateBoundModule = fu
         // call elevation update to it self
         EarthServerGenericClient.MainScene.updateElevation(this.index,value);
         // get height of the bound module. (for now at the center of the cube
-        var value = EarthServerGenericClient.MainScene.getHeightAt3DPosition(this.boundModelIndex,x,z);
-        console.log(value);
-        // get own transformation by name "EarthServerGenericClient_modelTransform"+this.index);
+        var HeightValue = EarthServerGenericClient.MainScene.getHeightAt3DPosition(this.boundModelIndex,x,z);
+
+        // get own transformation
         var trans = document.getElementById("EarthServerGenericClient_modelTransform"+this.index);
         if( trans)
         {
             var scale = trans.getAttribute("scale");
             scale = scale.split(" ");
-            // determine exact value
-            value = value + (this.cubeSizeY/2) - ( this.YResolution * scale[1] * this.yScale );
+            // determine exact HeightValue
+            HeightValue = HeightValue + (this.cubeSizeY/2) - ( this.YResolution * scale[1] * this.yScale );
             //update offset
-            EarthServerGenericClient.MainScene.updateOffset(this.index,1,value);
+            EarthServerGenericClient.MainScene.updateOffset(this.index,1,HeightValue);
         }
         else
         {   console.log("EarthServerClient::Module_Sharad not able to find transform.");    }

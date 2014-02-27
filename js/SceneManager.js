@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 17.12.1013
+ * @version 0.7 alpha 27.02.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -149,6 +149,15 @@ EarthServerGenericClient.SceneManager = function()
     var keyMapping = {};            // Stores the keys for certain events
     var globalElevationValue = 10;  // Stores the last used global elevation value
     var lightObserver = []; // Array of light observer
+    var drawGrid = false;           // Flag if a grid shall be drawn.
+    var drawCompass = false;        // Flag if the compass shall be drawn
+    var compassRotation = 0;        // Rotation of the compass
+    var compassColor = "0.8 0.8 0.8";// Color of the compass
+    var compassLabel = "N";         // Label for the compass
+    var CubeBaseQuery = null;       // A WMS image query for the base of the cube
+    var offSetScaling = 1.0;        // Global scaling of model offset.
+    var subsetting = false;          // Enable slicer for seubsetting
+    var subsetManager = null;       // Manager for subsetting
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -295,6 +304,61 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Sets the link or query for the image that should be displayed at the bottom of the cube.
+     * @param query - The query or link.
+     */
+    this.setCubeBaseLink = function( query )
+    {
+        CubeBaseQuery = query;
+    };
+
+    /**
+     * Sets the flag if subsetting should be enabled in the cube and the UI.
+     * @param value
+     */
+    this.setSubSetting = function( value )
+    {
+        subsetting = value;
+    };
+
+    /**
+     * Returns the values of the subsetting slices.
+     * Or null if subsetting is disabled.
+     * @returns {*}
+     */
+    this.getSubSettingValues = function()
+    {
+        if( subsetManager )
+        {
+            return subsetManager.getWorldValues();
+        }
+        else
+            return null;
+    };
+
+    /**
+     * Updates the subsetting values after a slider event.
+     * @param axis - Which Axis was changed.
+     * @param min - The new minimum value.
+     * @param max - The new maximum value.
+     */
+    this.setSubSettingValues = function(axis,min,max)
+    {
+        if( subsetManager )
+        {    subsetManager.updateSlicePosition(axis,min,max); }
+        else
+            console.log("EarthServerGenericClient:MainScene:setSubSettingValues: Subsetting disabled");
+    };
+
+    /**
+     * Returns the flag if subsetting is enabled.
+     */
+    this.getSubsettingFlag = function( )
+    {
+        return subsetting;
+    };
+
+    /**
      * Adds custom viewpoints to the scene and UI.
      * Viewpoints can be put out to the debug console by pressing 'd' and 'v'.
      * @param name - Name of the Viewpoint for the UI.
@@ -348,6 +412,7 @@ EarthServerGenericClient.SceneManager = function()
         lights = [];
         nextFrameCallback = [];
         lastFrameInsert = Number.MAX_VALUE;
+        lightObserver = [];
 
         // reset x3d scene
         EarthServerGenericClient.deleteAllChildsFromDomElement( this.x3dID );
@@ -377,7 +442,6 @@ EarthServerGenericClient.SceneManager = function()
     {
         defaultSpecularColor = color;
     };
-
 
     /**
      * Return the default specular color.
@@ -429,6 +493,66 @@ EarthServerGenericClient.SceneManager = function()
     {   return cubeSizeZ;   };
 
     /**
+     * Return the minimum of the cube in the x axis
+     * @returns {number}
+     */
+    this.getCubeMinimumX = function()
+    {   return -(cubeSizeX/2.0);   };
+
+    /**
+     * Return the minimum of the cube in the y axis
+     * @returns {number}
+     */
+    this.getCubeMinimumY = function()
+    {   return -(cubeSizeY/2.0);   };
+
+    /**
+     * Return the minimum of the cube in the z axis
+     * @returns {number}
+     */
+    this.getCubeMinimumZ = function()
+    {   return -(cubeSizeZ/2.0);   };
+
+    /**
+     * Return the maximum of the cube in the x axis
+     * @returns {number}
+     */
+    this.getCubeMaximumX = function()
+    {   return (cubeSizeX/2.0);   };
+
+    /**
+     * Return the maximum of the cube in the y axis
+     * @returns {number}
+     */
+    this.getCubeMaximumY = function()
+    {   return (cubeSizeY/2.0);   };
+
+    /**
+     * Return the maximum of the cube in the z axis
+     * @returns {number}
+     */
+    this.getCubeMaximumZ = function()
+    {   return (cubeSizeZ/2.0);   };
+
+    /**
+     * Returns the cube's minimum and maximum values on all three axii.
+     * @returns {{}}
+     */
+    this.getCubeDimensions = function()
+    {
+        var cube = {};
+
+        cube.minX = this.getCubeMinimumX();
+        cube.maxX = this.getCubeMaximumX();
+        cube.minY = this.getCubeMinimumY();
+        cube.maxY = this.getCubeMaximumY();
+        cube.minZ = this.getCubeMinimumZ();
+        cube.maxZ = this.getCubeMaximumZ();
+
+        return cube;
+    };
+
+    /**
      * Sets if a light is inserted into the scene.
      * @param value - Boolean value.
      */
@@ -444,6 +568,54 @@ EarthServerGenericClient.SceneManager = function()
     this.setDrawCube = function(value)
     {
         drawCube = value;
+    };
+
+    /**
+     * Sets if the compass should be drawn.
+     * @param value - Boolean value.
+     * @param rotation - Rotation of the compass in [0 - 2*PI] (Optional).
+     * @param color - Color of the compass (Optional).
+     * @param label - Label for the compass (Optional).
+     */
+    this.setDrawCompass = function(value, rotation, color, label )
+    {
+        drawCompass = value;
+        if( drawCompass && rotation !== undefined )
+            compassRotation = rotation;
+        if( drawCompass && color !== undefined)
+            compassColor = color;
+        if( drawCompass && label !== undefined)
+            compassLabel = label;
+    };
+
+    /**
+     * Draws grids on every sides of the cube except the top.
+     * @param cubeMinX - Minimum value on the x-axis.
+     * @param cubeMaxX - Maximum value on the x-axis
+     * @param cubeMinY - Minimum value on the y-axis.
+     * @param cubeMaxY - Maximum value on the y-axis
+     * @param cubeMinZ - Minimum value on the z-axis.
+     * @param cubeMaxZ - Maximum value on the z-axis
+     * @param unitSize - Size after a grid line will be drawn.
+     * @param lineSize - Thickness of a grid line.
+     */
+    this.setDrawGrid = function(cubeMinX,cubeMaxX,cubeMinY,cubeMaxY,cubeMinZ,cubeMaxZ,unitSize,lineSize)
+    {
+        if(cubeMinX < cubeMaxX && cubeMinY < cubeMaxY && cubeMinZ < cubeMaxZ)
+        {
+            if(unitSize > 0 || !isNaN(unitSize))
+            {
+                drawGrid = true;
+                this.GridMinAxisValue = [cubeMinX,cubeMinY,cubeMinZ];
+                this.GridMaxAxisValue = [cubeMaxX,cubeMaxY,cubeMaxZ];
+                this.GridUnitSize = unitSize;
+                this.GridLineSize = lineSize || 2;
+            }
+            else
+            {   console.log("EarthServerGenericClient::drawGrid: UnitSize must be a positive number.");    }
+        }
+        else
+        {   console.log("EarthServerGenericClient::drawGrid: At least one minimum value is bigger than the maximum value."); }
     };
 
     /**
@@ -949,7 +1121,6 @@ EarthServerGenericClient.SceneManager = function()
         this.setView(camID);
     };
 
-
     /**
      * Returns the number of defined cameras
      * @returns {Number}
@@ -1082,7 +1253,6 @@ EarthServerGenericClient.SceneManager = function()
            customCam = null;
        }
 
-
         // Cube
         if( drawCube)
         {
@@ -1132,6 +1302,63 @@ EarthServerGenericClient.SceneManager = function()
             lineset = null;
             coords = null;
             points = null;
+
+            // draw the grid if set
+            if( drawGrid)
+            {
+                this.appendCubeGrid(scene,this.GridMinAxisValue[0],this.GridMaxAxisValue[0],
+                    this.GridMinAxisValue[1],this.GridMaxAxisValue[1],
+                    this.GridMinAxisValue[2],this.GridMaxAxisValue[2],
+                    this.GridUnitSize, this.GridLineSize);
+            }
+
+        }
+
+        if( subsetting )
+        {
+            subsetManager = new EarthServerGenericClient.SubsetManager(true,true,true);
+            subsetManager.addSlicesToScene(scene);
+        }
+
+        if( CubeBaseQuery !== null)
+        {
+            var baseShape        = document.createElement("Shape");
+            var baseAppearance   = document.createElement("Appearance");
+            var baseMaterial     = document.createElement("Material");
+            var baseImageTexture = document.createElement("ImageTexture");
+            var baseTrisSet      = document.createElement("IndexedTriangleSet");
+            var baseCoords       = document.createElement("Coordinate");
+            var basePoints = "";
+
+            baseAppearance.setAttribute('sortType', 'opaque');
+            baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
+            baseImageTexture.setAttribute("url", CubeBaseQuery);
+            basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZ + " ";
+            basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZ + " ";
+            basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZNeg + " ";
+            basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZNeg + " ";
+            baseTrisSet.setAttribute("lit",'false');
+            baseTrisSet.setAttribute("index","0 1 2 2 3 0");
+
+            baseCoords.setAttribute("point", basePoints);
+            baseTrisSet.appendChild(baseCoords);
+            baseAppearance.appendChild(baseImageTexture);
+            baseAppearance.appendChild(baseMaterial);
+            baseShape.appendChild(baseAppearance);
+            baseShape.appendChild(baseTrisSet);
+            scene.appendChild(baseShape);
+
+            baseShape = null;
+            baseAppearance = null;
+            baseMaterial = null;
+            baseImageTexture = null;
+            baseTrisSet = null;
+            baseCoords = null;
+        }
+
+        if( drawCompass)
+        {
+            this.appendCompass(scene);
         }
 
         var trans = document.createElement('Transform');
@@ -1148,6 +1375,369 @@ EarthServerGenericClient.SceneManager = function()
 
         if( oculusRift )
         {   this.appendVRShader(x3dID,sceneID);  }
+    };
+
+    this.appendCompass = function(scene)
+    {
+        var compassTrans        = document.createElement("Transform");
+        var compassShape        = document.createElement("Shape");
+        var compassAppearance   = document.createElement("Appearance");
+        var compassMaterial     = document.createElement("Material");
+        var trisSet             = document.createElement("IndexedTriangleSet");
+        var itsCoords           = document.createElement("Coordinate");
+        var itsPoints = "";
+        var itsIndex  = "";
+
+        var compassTextTransform  = document.createElement("Transform");
+        var compassRotTransform  = document.createElement("Transform");
+        var compassTextShape      = document.createElement('shape');
+        var compassTextAppearance = document.createElement('appearance');
+        var compassTextMaterial   = document.createElement('material');
+        var compassText           = document.createElement('text');
+        var fontStyle             = document.createElement('fontStyle');
+
+        compassTextMaterial.setAttribute('diffuseColor', compassColor );
+        compassText.setAttribute('string', compassLabel);
+        compassText.setAttribute('solid', 'false');
+        fontStyle.setAttribute('family', 'calibri');
+        fontStyle.setAttribute('style', 'bold');
+        compassRotTransform.setAttribute("rotation","0 0 1 -1.57 ");
+        compassTextTransform.setAttribute('rotation', '1 0 0 -1.57');
+        compassTextTransform.setAttribute('translation', "4 0 0");
+        compassText.appendChild(fontStyle);
+        compassTextAppearance.appendChild(compassTextMaterial);
+        compassTextShape.appendChild(compassTextAppearance);
+        compassTextShape.appendChild(compassText);
+        compassRotTransform.appendChild(compassTextShape);
+        compassTextTransform.appendChild(compassRotTransform);
+        compassTrans.appendChild( compassTextTransform);
+
+        // Build compass coords
+        itsPoints += "-3 0 -0.5 ";
+        itsPoints += "-3 0 0.5 ";
+        itsPoints += "1 0 -0.5 ";
+        itsPoints += "1 0 0.5 ";
+        itsPoints += "1 0 -1.0 ";
+        itsPoints += "1 0 1.0 ";
+        itsPoints += "3 0 0.0";
+
+        // Build compass index
+        itsIndex += "0 1 2 1 3 2 4 5 6";
+
+        compassTrans.setAttribute("translation", "0 " + (-cubeSizeY/2) + " " + (cubeSizeZ*0.75));
+        compassTrans.setAttribute("scale", "" + (cubeSizeX/20) + " " + (cubeSizeY/10) + " " + (cubeSizeZ/10));
+        compassTrans.setAttribute("rotation","0 1 0 "+ compassRotation);
+        compassTrans.setAttribute("id", "EarthServerGenericClient_CompassTrans");
+        compassMaterial.setAttribute("diffuseColor",compassColor);
+        itsCoords.setAttribute("point", itsPoints);
+        trisSet.setAttribute("index", itsIndex);
+        trisSet.setAttribute("solid", "false");
+
+        compassAppearance.appendChild(compassMaterial);
+        compassShape.appendChild(compassAppearance);
+        trisSet.appendChild(itsCoords);
+        compassShape.appendChild(trisSet);
+        compassTrans.appendChild(compassShape);
+        scene.appendChild(compassTrans);
+
+        compassTextTransform  = null;
+        compassRotTransform   = null;
+        compassTextShape      = null;
+        compassTextAppearance = null;
+        compassTextMaterial   = null;
+        compassText           = null;
+        fontStyle             = null;
+
+        itsCoords = null;
+        trisSet = null;
+        compassMaterial = null;
+        compassAppearance = null;
+        compassShape = null;
+        compassTrans = null;
+
+    };
+
+    this.appendCubeGrid = function(root,minX,maxX,minY,maxY,minZ,maxZ,unitSize,lineSize)
+    {
+        // Creates shapes and appearances for every side
+        var shapeFront   = document.createElement('Shape');
+        var trissetFront = document.createElement('IndexedTriangleSet');
+        trissetFront.setAttribute("colorPerVertex", "false");
+        var coordsFront = document.createElement('Coordinate');
+
+        var shapeBack   = document.createElement('Shape');
+        var trissetBack = document.createElement('IndexedTriangleSet');
+        trissetBack.setAttribute("colorPerVertex", "false");
+        var coordsBack = document.createElement('Coordinate');
+
+        var shapeLeft   = document.createElement('Shape');
+        var trissetLeft = document.createElement('IndexedTriangleSet');
+        trissetLeft.setAttribute("colorPerVertex", "false");
+        var coordsLeft = document.createElement('Coordinate');
+
+        var shapeRight   = document.createElement('Shape');
+        var linesetRight = document.createElement('IndexedTriangleSet');
+        linesetRight.setAttribute("colorPerVertex", "false");
+        var coordsRight = document.createElement('Coordinate');
+
+        var shapeBottom   = document.createElement('Shape');
+        var trissetBottom = document.createElement('IndexedTriangleSet');
+        trissetBottom.setAttribute("colorPerVertex", "false");
+        var coordsBottom = document.createElement('Coordinate');
+
+        var appearance = document.createElement('Appearance');
+        var material   = document.createElement('Material');
+        material.setAttribute("diffuseColor","1.0 1.0 1.0");
+        material.setAttribute("specularColor","1.0 1.0 1.0");
+        var AppearanceDef = "EarthServerClient::GridAppDef";
+        appearance.appendChild(material);
+        appearance.setAttribute("ID",AppearanceDef);
+
+        var appearanceFront = document.createElement('Appearance');
+        appearanceFront.setAttribute("Use",AppearanceDef);
+        var appearanceBack = document.createElement('Appearance');
+        appearanceBack.setAttribute("Use",AppearanceDef);
+        var appearanceLeft = document.createElement('Appearance');
+        appearanceLeft.setAttribute("Use",AppearanceDef);
+        var appearanceRight = document.createElement('Appearance');
+        appearanceRight.setAttribute("Use",AppearanceDef);
+
+        var nXLines = parseInt( (maxX - minX) / unitSize );
+        var nYLines = parseInt( (maxY - minY) / unitSize );
+        var nZLines = parseInt( (maxZ - minZ) / unitSize );
+        var xSize = cubeSizeX / nXLines;
+        var ySize = cubeSizeY / nYLines;
+        var zSize = cubeSizeZ / nZLines;
+
+        var cubeX = cubeSizeX/2.0;
+        var cubeY = cubeSizeY/2.0;
+        var cubeZ = cubeSizeZ/2.0;
+        var cubeXNeg = -cubeSizeX/2.0;
+        var cubeYNeg = -cubeSizeY/2.0;
+        var cubeZNeg = -cubeSizeZ/2.0;
+
+        var p = [];
+        var indices = "";
+        var indexCounter = 0;
+
+        // ### FRONT GRID ###
+        for(var i=1; i< nXLines;i++)
+        {
+            // vertical
+            p.push(""+ (cubeXNeg+(i*xSize)          )+ " " + cubeY    + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)          )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeY    + " " + cubeZNeg);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        var stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsFront.setAttribute("point", stringP);
+        trissetFront.setAttribute("index",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Back GRID ###
+        for(i=1; i< nXLines;i++)
+        {
+            // vertical
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeY    + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeY    + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZ);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsBack.setAttribute("point", stringP);
+        trissetBack.setAttribute("Index",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Left Grid ###
+        for( i=1; i< nZLines;i++)
+        {
+            // vertical
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeY    + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg   );
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg   );
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsLeft.setAttribute("point", stringP);
+        trissetLeft.setAttribute("Index",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Right Grid ###
+        for( i=1; i< nZLines;i++)
+        {
+            // vertical
+            p.push(""+ cubeX + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            p.push(""+ cubeX + " " + cubeY    + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        for(i=1; i<nYLines;i++)
+        {
+            // horizontal
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ   );
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ   );
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsRight.setAttribute("point", stringP);
+        linesetRight.setAttribute("Index",indices);
+        p = [];
+        indices = "";
+        indexCounter = 0;
+
+        // ### Bottom Grid ###
+        for(i=1; i< nXLines;i++)
+        {
+            // Front to back
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZNeg);
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        for( i=1; i< nZLines;i++)
+        {
+            // Side to side
+            p.push(""+ cubeX    + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            p.push(""+ cubeX    + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            // Indices
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
+        }
+        stringP = "";
+        for( i=0; i< p.length; i++)
+        {   stringP = stringP+p[i]+" ";   }
+        coordsBottom.setAttribute("point", stringP);
+        trissetBottom.setAttribute("Index",indices);
+
+        shapeBottom.appendChild(appearance);
+        shapeBottom.appendChild(trissetBottom);
+        trissetBottom.appendChild(coordsBottom);
+        root.appendChild(shapeBottom);
+
+        shapeFront.appendChild(appearanceFront);
+        shapeFront.appendChild(trissetFront);
+        trissetFront.appendChild(coordsFront);
+        root.appendChild(shapeFront);
+
+        shapeBack.appendChild(appearanceBack);
+        shapeBack.appendChild(trissetBack);
+        trissetBack.appendChild(coordsBack);
+        root.appendChild(shapeBack);
+
+        shapeLeft.appendChild(appearanceLeft);
+        shapeLeft.appendChild(trissetLeft);
+        trissetLeft.appendChild(coordsLeft);
+        root.appendChild(shapeLeft);
+
+        shapeRight.appendChild(appearanceRight);
+        shapeRight.appendChild(linesetRight);
+        linesetRight.appendChild(coordsRight);
+        root.appendChild(shapeRight);
+
+        shapeFront   = null;
+        trissetFront = null;
+        coordsFront = null;
+        appearanceFront = null;
+
+        shapeBack   = null;
+        trissetBack = null;
+        coordsBack = null;
+        appearanceBack = null;
+
+        shapeLeft   = null;
+        trissetLeft = null;
+        coordsLeft = null;
+        appearanceLeft = null;
+
+        shapeRight   = null;
+        linesetRight = null;
+        coordsRight = null;
+        appearanceRight = null;
+
+        shapeBottom = null;
+        trissetBottom = null;
+        coordsBottom = null;
+
+        appearance = null;
+        material = null;
     };
 
     this.appendVRShader = function(x3dID,sceneID)
@@ -1359,6 +1949,11 @@ EarthServerGenericClient.SceneManager = function()
 
         axisLabels = new EarthServerGenericClient.AxisLabels(cubeSizeX/2, cubeSizeY/2, cubeSizeZ/2);
         axisLabels.createAxisLabels(xLabel,yLabel,zLabel);
+
+        if( drawGrid)
+            axisLabels.createAxisGridLabels( this.GridMinAxisValue[0], this.GridMaxAxisValue[0],
+                                            this.GridMinAxisValue[1], this.GridMaxAxisValue[1],
+                                            this.GridMinAxisValue[2], this.GridMaxAxisValue[2] );
     };
 
     /**
@@ -1461,6 +2056,20 @@ EarthServerGenericClient.SceneManager = function()
         for(var i=0; i< models.length; i++)
         {
             models[i].createModel(this.trans,cubeSizeX,cubeSizeY,cubeSizeZ);
+        }
+        // add child/parent dependency
+        for(i=0; i< models.length; i++)
+        {
+            if( models[i].isChildOf !== null)
+            {
+                var index = this.getModelIndex(models[i].isChildOf );
+                if( index >= 0)
+                {
+                    models[index].addBinding( models[i] );
+                }
+                else
+                {   console.log("EarthServerGenericClient:MainScene: Can't find parent with name " + models[i].isChildOf );    }
+            }
         }
     };
 
@@ -1665,7 +2274,7 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
-     * Update Offset changes the position selected SceneModel on the x-,y- or z-Axis.
+     * Update Offset changes the position of the selected SceneModel on the x-,y- or z-Axis.
      * @param modelIndex - Index of the model that should be altered
      * @param which - Which Axis will be changed (0:X 1:Y 2:Z)
      * @param value - The new position
@@ -1676,34 +2285,39 @@ EarthServerGenericClient.SceneManager = function()
 
         if( trans )
         {
-            // off set of the cube
+            // offset of the cube
             var offset=0;
             // the minValue is the scaled minimum value of the data at the given axis
             // some terrains start with 0 at all axis, others do not.
             var minValue = EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
-
-            var scale = trans.getAttribute("scale");
-            scale = scale.split(" ");
+            var delta = 0;
+            var scale    = x3dom.fields.SFVec3f.parse( trans.getAttribute("scale") );
+            var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
+            var newTrans;
 
             switch(which)
             {
                 case 0: offset = cubeSizeX/2.0;
-                        minValue *= scale[0];
+                        minValue *= scale.x;
+                        newTrans = (value - offset- minValue) *offSetScaling;
+                        delta = oldTrans.x - newTrans;
+                        oldTrans.x = newTrans;
                         break;
                 case 1: offset = cubeSizeY/2.0;
-                        minValue *= scale[1];
+                        minValue *= scale.y;
+                        newTrans = (value - offset- minValue) *offSetScaling;
+                        delta = oldTrans.y - newTrans;
+                        oldTrans.y = newTrans;
                         break;
                 case 2: offset = cubeSizeZ/2.0;
-                        minValue *= scale[2];
+                        minValue *= scale.z;
+                        newTrans = (value - offset- minValue) *offSetScaling;
+                        delta = oldTrans.z - newTrans;
+                        oldTrans.z = newTrans;
                         break;
             }
-
-            console.log(minValue);
-            var oldTrans = trans.getAttribute("translation");
-            oldTrans = oldTrans.split(" ");
-            var delta = oldTrans[which] - (value - offset);
-            oldTrans[which] = value - offset- minValue;
-            trans.setAttribute("translation",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
+            // update translation and call bindings with the delta
+            trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z );
             models[modelIndex].movementUpdateBindings(which,delta);
         }
     };
@@ -1720,10 +2334,22 @@ EarthServerGenericClient.SceneManager = function()
 
         if( trans )
         {
-            var oldTrans = trans.getAttribute("translation");
-            oldTrans = oldTrans.split(" ");
-            oldTrans[which] = parseFloat(oldTrans[which]) - parseFloat(delta);
-            trans.setAttribute("translation",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
+            var oldTrans = x3dom.fields.SFVec3f.parse(trans.getAttribute("translation"));
+
+            switch(which)
+            {
+                case 0:
+                    oldTrans.x = parseFloat(oldTrans.x) - parseFloat(delta);
+                    break;
+                case 1:
+                    oldTrans.y = parseFloat(oldTrans.y) - parseFloat(delta);
+                    break;
+                case 2:
+                    oldTrans.z = parseFloat(oldTrans.z) - parseFloat(delta);
+                    break;
+            }
+
+            trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z);
             models[modelIndex].movementUpdateBindings(which,delta);
         }
         else

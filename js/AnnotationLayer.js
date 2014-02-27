@@ -422,15 +422,15 @@ EarthServerGenericClient.AxisLabels = function(xSize, ySize, zSize, textHover)
     };
 
     /**
-     * @description This (private) function creates the needed x3dom nodes.
+     * @description This (private) function creates the x3dom text nodes for the axis labels.
      *
      * @param axis
      * Which axis do you want? Available: x, y, z
      *
      * @param side
-     * Choose the side of the axis. <br>
-     * Available for x: front (default), back and top. <br>
-     * Available for y: front (default), back, left and right. <br>
+     * Choose the side of the axis.
+     * Available for x: front (default), back and top.
+     * Available for y: front (default), back, left and right.
      * Available for z: front (default), back and top.
      *
      * @param label
@@ -456,7 +456,6 @@ EarthServerGenericClient.AxisLabels = function(xSize, ySize, zSize, textHover)
         shape.appendChild(text);
         textTransform.appendChild(shape);
 
-        //var home = document.getElementById('x3dScene');
         var home = document.getElementById('AnnotationsGroup');
         var rotationTransform = document.createElement('transform');
 
@@ -518,5 +517,166 @@ EarthServerGenericClient.AxisLabels = function(xSize, ySize, zSize, textHover)
         transforms[transforms.length]=textTransform;
         rotationTransform.appendChild(textTransform);
         home.appendChild(rotationTransform);
+
+        textTransform = null;
+        shape = null;
+        appearance = null;
+        material = null;
+        text = null;
+        fontStyle = null;
+        home = null;
+        rotationTransform = null;
+    }
+
+    /**
+     * @description This function generates grid labels on all three axis (x,y,z). The labels will be
+     * added on each side (except bottom).
+     */
+    this.createAxisGridLabels = function(xLabelMin, xLabelMax, yLabelMin, yLabelMax, zLabelMin, zLabelMax)
+    {
+        createGridLabel("x", "front", "min", xLabelMin);
+        createGridLabel("x", "front", "max", xLabelMax);
+      /*  createGridLabel("x", "back",  "min", xLabelMin);
+        createGridLabel("x", "back",  "max", xLabelMax);
+        createGridLabel("x", "top",   "min", xLabelMin);
+        createGridLabel("x", "top",   "max", xLabelMax);*/
+
+       /* createGridLabel("y", "front", "min", yLabelMin);
+        createGridLabel("y", "front", "max", yLabelMax);
+        createGridLabel("y", "back",  "min", yLabelMin);
+        createGridLabel("y", "back",  "max", yLabelMax); */
+        createGridLabel("y", "left",  "min", yLabelMin);
+        createGridLabel("y", "left",  "max", yLabelMax);
+        /*createGridLabel("y", "right", "min",yLabelMin);
+        createGridLabel("y", "right", "max",yLabelMax);*/
+
+        /*createGridLabel("z", "front", "min", zLabelMin);
+        createGridLabel("z", "front", "max", zLabelMax);
+        createGridLabel("z", "back", "min", zLabelMin);
+        createGridLabel("z", "back", "max", zLabelMax);*/
+        createGridLabel("z", "top",  "min", zLabelMin);
+        createGridLabel("z", "top",  "max", zLabelMax);
+    };
+
+    /**
+     * @description This (private) function creates the needed x3dom nodes.
+     *
+     * @param axis
+     * Which axis do you want? Available: x, y, z
+     *
+     * @param side
+     * Choose the side of the axis.
+     * Available for x: front (default), back and top.
+     * Available for y: front (default), back, left and right.
+     * Available for z: front (default), back and top.
+     *
+     * @param minmax
+     * Flag if its the minimum or maximum value for this axis
+     *
+     * @param label
+     * This text will appear at the given axis.
+     */
+    function createGridLabel(axis, side, minmax, label)
+    {
+        //Setup text
+        var textTransform = document.createElement('transform');
+        textTransform.setAttribute('scale', xSize/10 + " " + ySize/10 + " " + zSize/10);
+        var shape = document.createElement('shape');
+        var appearance = document.createElement('appearance');
+        var material = document.createElement('material');
+        material.setAttribute('emissiveColor', fontColor);
+        var text = document.createElement('text');
+        text.setAttribute('string', label);
+        var fontStyle = document.createElement('fontStyle');
+        fontStyle.setAttribute('family', 'calibri');
+        fontStyle.setAttribute('style', 'bold');
+        text.appendChild(fontStyle);
+        appearance.appendChild(material);
+        shape.appendChild(appearance);
+        shape.appendChild(text);
+        textTransform.appendChild(shape);
+
+        var home = document.getElementById('AnnotationsGroup');
+        var rotationTransform = document.createElement('transform');
+
+        if(axis=="x")
+        {
+            var xtrans = -xSize+hover;
+            if(minmax === "max")
+                xtrans = xSize-hover;
+
+            textTransform.setAttribute('translation', "" + xtrans + " "+ (ySize+hover) + " " + zSize);
+
+            if(side=="back")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 3.14');
+            }
+            else if(side=="top")
+            {
+                textTransform.setAttribute('rotation', '1 0 0 -1.57');
+                textTransform.setAttribute('translation', "0 " + -ySize + " " + (-zSize-hover));
+            }
+            textNodesX[textNodesX.length] = text;
+        }
+        else if(axis=="y")
+        {
+            var ytrans = -ySize+hover;
+            if(minmax === "max")
+                ytrans = ySize-hover;
+
+            textTransform.setAttribute('translation', -(xSize+hover) + " "+ ytrans + " " + zSize);
+            textTransform.setAttribute('rotation', '0 0 1 1.57');
+
+            if(side=="back")
+            {
+                textTransform.setAttribute('translation', (xSize+hover) + " "+ ytrans + " " + zSize);
+                textTransform.setAttribute('rotation', '0 0 1 4.74');
+                rotationTransform.setAttribute('rotation', '1 0 0 3.14');
+            }
+            else if(side=="left")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 -1.57');
+            }
+            else if(side=="right")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 1.57');
+            }
+            textNodesY[textNodesY.length] = text;
+        }
+        else if(axis=="z")
+        {
+            var ztrans = zSize/2+hover;
+            if(minmax === "max")
+                ztrans = -zSize/2-hover;
+
+            textTransform.setAttribute('translation', xSize + " " + (ySize+hover) + " "+ ztrans);
+            textTransform.setAttribute('rotation', '0 1 0 1.57');
+            if(side=="back")
+            {
+                rotationTransform.setAttribute('rotation', '0 1 0 3.14');
+            }
+            else if(side=="top")
+            {
+                textTransform.setAttribute('rotation', '0 1 0 1.57');
+                textTransform.setAttribute('translation', "0 0 " + ztrans);
+
+                rotationTransform.setAttribute('rotation', '0 0 1 -4.71');
+                rotationTransform.setAttribute('translation', -(xSize+hover) + " " + -ySize + " " + ztrans);
+            }
+            textNodesZ[textNodesZ.length] = text;
+        }
+
+        transforms[transforms.length]=textTransform;
+        rotationTransform.appendChild(textTransform);
+        home.appendChild(rotationTransform);
+
+        textTransform = null;
+        shape = null;
+        appearance = null;
+        material = null;
+        text = null;
+        fontStyle = null;
+        home = null;
+        rotationTransform = null;
     }
 };

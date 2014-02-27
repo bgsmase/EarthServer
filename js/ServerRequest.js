@@ -369,7 +369,6 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                         {   coords = coords.substr(1);  }
 
                         var coordsArray = coords.split(" ");
-                        console.log("coordsArray",coordsArray.length);
 
                         // check all coords to set min,max,width&height values
                         for(var i=0; i+2< coordsArray.length; i+=3)
@@ -422,7 +421,6 @@ EarthServerGenericClient.getPointCloudWCS = function(callback,responseData,WCSur
                         if(colors && colors.length )
                         {
                             var colorArrayRGB = colors.split(" ");
-                            console.log("colorArray",colorArrayRGB.length);
                             var colorArray = [];
                             for(var n=0;n<colorArrayRGB.length;n++)
                             {
@@ -647,7 +645,15 @@ EarthServerGenericClient.requestWCPSImageWCSDem = function(callback,WCPSurl,WCPS
     EarthServerGenericClient.getCoverageWCS(combine,responseData,WCSurl,WCScoverID,WCSBoundingBox,WCSVersion);
 };
 
-
+/**
+ * Requests one Image and one DEM bot via WCPS. The Image and DEM can be requested from
+ * different service endpoints.
+ * @param callback - Module requesting this data.
+ * @param imageURL - URL of the WCPS endpoint for the image.
+ * @param imageQuery - Query to receive the image.
+ * @param demURL - URL of the WCPS endpoint for the DEM.
+ * @param demQuery - Query to receive the DEM.
+ */
 EarthServerGenericClient.requestWCPSImageWCPSDem = function(callback,imageURL,imageQuery,demURL,demQuery)
 {
     var responseData = new EarthServerGenericClient.ServerResponseData();
@@ -687,9 +693,9 @@ EarthServerGenericClient.requestWMSImageWCSDem = function(callback,BoundingBox,R
  * @param BoundingBox - Bounding box of the area, used in both WMS and WCS requests.
  * @param ResX - Width of the response image via WMS.
  * @param ResY - Height of the response image via WMS.
- * @param WMSurl - URL of the WMS service.
+ * @param WMSurl - URL of the WMS endpoint.
  * @param WMScoverID - Layer ID used in WMS.
- * @param WMSversion - Version of the WMS service.
+ * @param WMSversion - Version of the WMS endpoint.
  * @param WMSCRS - The Coordinate Reference System. (Should be like: "crs=1")
  * @param WMSImageFormat - Image format for the WMS response.
  * @param WCPSurl - URL for the WCPS Query
@@ -704,6 +710,13 @@ EarthServerGenericClient.requestWMSImageWCPSDem = function( callback,BoundingBox
     EarthServerGenericClient.getWCPSDemCoverage(combine,responseData,WCPSurl,WCPSquery);
 };
 
+/**
+ * Function to receive multiple Images via WCPS. After all images are received
+ * the callback function is called with an array of ServerResponseData.
+ * @param callback - Module requesting the data.
+ * @param URLWCPS - URL of the WCPS endpoint.
+ * @param WCPSQuery - Array of WCPS queries.
+ */
 EarthServerGenericClient.requestWCPSImages = function(callback, URLWCPS, WCPSQuery)
 {
     var combine = new EarthServerGenericClient.combinedCallBack(callback,WCPSQuery.length,true);
@@ -722,17 +735,16 @@ EarthServerGenericClient.requestWCPSImages = function(callback, URLWCPS, WCPSQue
 };
 
 /**
- * TODO:
- * @param callback
- * @param WCSurl
- * @param WCSversion
- * @param WCScoverID
- * @param minx
- * @param maxx
- * @param miny
- * @param maxy
- * @param minh
- * @param maxh
+ * @param callback - Module requesting the data.
+ * @param WCSurl - URL of the WCS endpoint.
+ * @param WCSversion - Version of the WCS endpoint.
+ * @param WCScoverID - Coverage ID.
+ * @param minx - Latitude subset minimum.
+ * @param maxx - Latitude subset maximum.
+ * @param miny - Longitude subset minimum.
+ * @param maxy - Longitude subset maximum.
+ * @param minh - Height subset minimum.
+ * @param maxh - height subset maximum.
  */
 EarthServerGenericClient.requestWCSPointCloud = function(callback,WCSurl,WCSversion,WCScoverID,minx,maxx,miny,maxy,minh,maxh)
 {

@@ -58,6 +58,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     /**
      * Sets the height resolution of the model. This effects the scaling of the elevation of the model.
      * The parameter should be the difference between the smallest and biggest value of the DEM.
+     * Setting the same value for this and setHeightMinimum for all models puts them on the same scale.
      * Make the sure the value fits to the model's size.
      * @param value
      */
@@ -66,6 +67,21 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         if( !isNaN(value) ) // has to be a number or undefined behavior will occur
         {
             this.YResolution = value;
+        }
+    };
+
+    /**
+     * Sets the minimum height of the model. This affects the scaling of the elevation of the model.
+     * The parameter should be less than the minimum value of the DEM.
+     * Setting the same value for this and setHeightResolution for all models puts them on the same scale.
+     * Make the sure the value fits to the model's size.
+     * @param value
+     */
+    this.setHeightMinimum = function( value )
+    {
+        if( !isNaN(value) ) // has to be a number or undefined behavior will occur
+        {
+            this.YMinimum = value;
         }
     };
 
@@ -263,7 +279,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$MINY",this.miny);
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$MAXX",this.maxx);
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$MAXY",this.maxy);
-        out = EarthServerGenericClient.replaceAllFindsInString(out,"$CRS" ,'"' + this.CRS + '"');
+        out = EarthServerGenericClient.replaceAllFindsInString(out,"$CRS" ,this.CRS);
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$RESX",this.XResolution);
         // allows users to use either $RESY or $RESZ
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$RESZ",this.ZResolution);
@@ -332,6 +348,35 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Add this module as a child of the module with the parameter parentName.
+     * @param parentName
+     */
+    this.addAsChildOf = function( parentName )
+    {
+        this.isChildOf = parentName;
+    };
+
+    /**
+     * Returns a list of all children (including children of children).
+     * Used to detect loops.
+     */
+    this.getChildList = function()
+    {
+        var children = [];
+
+        for(var i=0; i<this.bindings.length;i++)
+        {
+            // add name of every child
+            children.push(this.bindings[i].name );
+            // add list of child names of every child
+            var tmp = this.bindings[i].getChildList();
+            children = children.concat(tmp);
+        }
+
+        return children;
+    };
+
+    /**
      * Adds an Object that will be informed about movements and alterations of the model.
      * @param bindingObject - Object that will receive the notification.
      */
@@ -374,10 +419,12 @@ EarthServerGenericClient.AbstractSceneModel = function(){
      */
     this.movementUpdateBindings = function(movementType,value)
     {
+        this.updateLock = true;
         for(var i=0; i<this.bindings.length;i++)
         {
             this.bindings[i].movementUpdateBoundModule(movementType,value);
         }
+        this.updateLock = false;
     };
 
     /**
@@ -386,6 +433,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
      */
     this.elevationUpdateBinding = function(value)
     {
+        this.updateLock = true;
         if(value === undefined)
         {   value = 10; }//TODO DEFINE some basic start values for UI etc.
 
@@ -393,6 +441,66 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         {
             this.bindings[i].elevationUpdateBoundModule(value);
         }
+        this.updateLock = false;
+    };
+
+    /**
+     * Sets the index of the scene model the sharad module is bound to.
+     * @param index - Index of the scene model.
+     */
+    this.setBoundModuleIndex = function(index)
+    {
+        if(index === this.index)//prevent to bind this module to itself
+        {
+            console.log("Module_Base: Can't bind module to itself.");
+        }
+        else
+        {
+            this.boundModelIndex = index;
+        }
+    };
+
+    /**
+     * Returns the index of the model sharad module is bound to.
+     * @returns {number} - Index of the model or -1 if unbound.
+     */
+    this.getBoundModuleIndex = function()
+    {
+        return this.boundModelIndex;
+    };
+
+    /**
+     * Resets the modelIndex sharad module is bound to back to -1 and marks it as unbound.
+     */
+    this.releaseBinding = function()
+    {
+        this.boundModelIndex = -1;
+    };
+
+    /**
+     * If the module is bound to another module the module shall move when the other module is moved.
+     * This function shall receive the delta of the positions every time the module is moved.
+     * @param axis - Axis of the movement.
+     * @param delta - Delta to the last position.
+     */
+    this.movementUpdateBoundModule = function(axis,delta)
+    {
+        if( !this.updateLock )
+            EarthServerGenericClient.MainScene.updateOffsetByDelta(this.index,axis,delta);
+        else
+            console.log("ModuleBase: Model " + this.name +" locked. Potential loop in child/parent structure.");
+    };
+
+    /**
+     * This function notifies the module that the bound module's elevation was changed.
+     * All annotation will be checked and altered in their position.
+     */
+    this.elevationUpdateBoundModule = function(value)
+    {
+        if( !this.updateLock )
+            EarthServerGenericClient.MainScene.updateElevation(this.index,value);
+        else
+            console.log("ModuleBase: Model " + this.name +" locked. Potential loop in child/parent structure.");
     };
 
     /**
@@ -679,5 +787,17 @@ EarthServerGenericClient.AbstractSceneModel = function(){
          * @type {Number}
          */
         this.index = -1;
+
+        /**
+         * Stores the name of the parent node.
+         * @type {null}
+         */
+        this.isChildOf = null;
+
+        /**
+         * Lock while updating movement of it's children.
+         * @type {boolean}
+         */
+        this.updateLock = false;
     };
 };

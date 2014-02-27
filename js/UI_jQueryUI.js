@@ -181,6 +181,45 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
         adiv=null;
         ap=null;
     }
+
+    if( EarthServerGenericClient.MainScene.getSubsettingFlag())
+    {
+        var Sname = document.createElement("h3");
+        Sname.innerHTML = "SubSetting";
+        var Sdiv = document.createElement("div");
+        //Set IDs
+        Sname.setAttribute("id","EarthServerGenericClient_S_HEADER");
+        Sdiv.setAttribute("id","EarthServerGenericClient_S_Div");
+
+        UI_DIV.appendChild(Sname);
+        UI_DIV.appendChild(Sdiv);
+
+        var values = EarthServerGenericClient.MainScene.getSubSettingValues();
+        var start = [];
+
+        if( values.hasX )
+        {
+            start[0] = values.minX;
+            start[1] = values.maxX;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_X","SUBSETTING",0,values.minX,values.maxX,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+        if( values.hasY )
+        {
+            start[0] = values.minY;
+            start[1] = values.maxY;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Y","SUBSETTING",1,values.minY,values.maxY,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+        if( values.hasZ )
+        {
+            start[0] = values.minZ;
+            start[1] = values.maxZ;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Z","SUBSETTING",2,values.minZ,values.maxZ,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+
+        Sname=null;
+        Sdiv=null;
+    }
+
     $( "#"+domElementID ).accordion({
         heightStyle: "content",
         collapsible: true
@@ -263,6 +302,38 @@ EarthServerGenericClient.appendGenericSlider = function(domElement,sliderID,labe
 
 };
 
+/**
+ * Generic range sliders are calling their callback function with an element ID and their values.
+ * @param domElement - Append the slider to this dom element.
+ * @param sliderID - Dom ID for this slider.
+ * @param label - Label (displayed in the UI) for this slider
+ * @param elementID - First parameter for the callback function. Change the module with this ID.
+ * @param min - Minimum value of this slider.
+ * @param max - Maximum value of this slider.
+ * @param startValue - Start value of this slider.
+ * @param callback - Callback function, every time the slider is moved this function will be called.
+ */
+EarthServerGenericClient.appendRangeSlider = function(domElement,sliderID,label,elementID,min,max,startValue,callback)
+{
+    var p = document.createElement("p");
+    p.innerHTML = label;
+    domElement.appendChild(p);
+
+    var slider = document.createElement("div");
+    slider.setAttribute("id",sliderID);
+    domElement.appendChild(slider);
+
+    $( "#"+sliderID ).slider({
+        range: true,
+        min: min,
+        max: max,
+        values: [startValue[0],startValue[1] ],
+        slide: function( event, ui ) {
+            callback(elementID,ui.values[0],ui.values[1]);
+        }
+    });
+
+};
 /**
  * Special slider for setting the transparency of scene models.
  * @param domElement - Append the slider to this dom element.

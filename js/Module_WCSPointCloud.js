@@ -134,9 +134,10 @@ EarthServerGenericClient.Model_WCSPointCloud.prototype.receiveData = function( d
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
+        var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
 
         // build transform
-        this.transformNode = this.createTransform(data.width,YResolution,data.height,data.minHMvalue,data.minXvalue,data.minZvalue);
+        this.transformNode = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         /*this.transformNode = document.createElement("transform");
         this.transformNode.setAttribute("id", "EarthServerGenericClient_modelTransform"+this.index);
         this.transformNode.setAttribute("onclick","EarthServerGenericClient.MainScene.OnClickFunction("+this.index+",event.hitPnt);");

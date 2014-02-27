@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 03.02.2014
+ * @version 0.7 alpha 27.02.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -154,7 +154,10 @@ EarthServerGenericClient.SceneManager = function()
     var compassRotation = 0;        // Rotation of the compass
     var compassColor = "0.8 0.8 0.8";// Color of the compass
     var compassLabel = "N";         // Label for the compass
-    var CubeBaseQuery = null;        // A WMS image query for the base of the cube
+    var CubeBaseQuery = null;       // A WMS image query for the base of the cube
+    var offSetScaling = 1.0;        // Global scaling of model offset.
+    var subsetting = false;          // Enable slicer for seubsetting
+    var subsetManager = null;       // Manager for subsetting
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -310,6 +313,52 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Sets the flag if subsetting should be enabled in the cube and the UI.
+     * @param value
+     */
+    this.setSubSetting = function( value )
+    {
+        subsetting = value;
+    };
+
+    /**
+     * Returns the values of the subsetting slices.
+     * Or null if subsetting is disabled.
+     * @returns {*}
+     */
+    this.getSubSettingValues = function()
+    {
+        if( subsetManager )
+        {
+            return subsetManager.getWorldValues();
+        }
+        else
+            return null;
+    };
+
+    /**
+     * Updates the subsetting values after a slider event.
+     * @param axis - Which Axis was changed.
+     * @param min - The new minimum value.
+     * @param max - The new maximum value.
+     */
+    this.setSubSettingValues = function(axis,min,max)
+    {
+        if( subsetManager )
+        {    subsetManager.updateSlicePosition(axis,min,max); }
+        else
+            console.log("EarthServerGenericClient:MainScene:setSubSettingValues: Subsetting disabled");
+    };
+
+    /**
+     * Returns the flag if subsetting is enabled.
+     */
+    this.getSubsettingFlag = function( )
+    {
+        return subsetting;
+    };
+
+    /**
      * Adds custom viewpoints to the scene and UI.
      * Viewpoints can be put out to the debug console by pressing 'd' and 'v'.
      * @param name - Name of the Viewpoint for the UI.
@@ -363,6 +412,7 @@ EarthServerGenericClient.SceneManager = function()
         lights = [];
         nextFrameCallback = [];
         lastFrameInsert = Number.MAX_VALUE;
+        lightObserver = [];
 
         // reset x3d scene
         EarthServerGenericClient.deleteAllChildsFromDomElement( this.x3dID );
@@ -443,6 +493,66 @@ EarthServerGenericClient.SceneManager = function()
     {   return cubeSizeZ;   };
 
     /**
+     * Return the minimum of the cube in the x axis
+     * @returns {number}
+     */
+    this.getCubeMinimumX = function()
+    {   return -(cubeSizeX/2.0);   };
+
+    /**
+     * Return the minimum of the cube in the y axis
+     * @returns {number}
+     */
+    this.getCubeMinimumY = function()
+    {   return -(cubeSizeY/2.0);   };
+
+    /**
+     * Return the minimum of the cube in the z axis
+     * @returns {number}
+     */
+    this.getCubeMinimumZ = function()
+    {   return -(cubeSizeZ/2.0);   };
+
+    /**
+     * Return the maximum of the cube in the x axis
+     * @returns {number}
+     */
+    this.getCubeMaximumX = function()
+    {   return (cubeSizeX/2.0);   };
+
+    /**
+     * Return the maximum of the cube in the y axis
+     * @returns {number}
+     */
+    this.getCubeMaximumY = function()
+    {   return (cubeSizeY/2.0);   };
+
+    /**
+     * Return the maximum of the cube in the z axis
+     * @returns {number}
+     */
+    this.getCubeMaximumZ = function()
+    {   return (cubeSizeZ/2.0);   };
+
+    /**
+     * Returns the cube's minimum and maximum values on all three axii.
+     * @returns {{}}
+     */
+    this.getCubeDimensions = function()
+    {
+        var cube = {};
+
+        cube.minX = this.getCubeMinimumX();
+        cube.maxX = this.getCubeMaximumX();
+        cube.minY = this.getCubeMinimumY();
+        cube.maxY = this.getCubeMaximumY();
+        cube.minZ = this.getCubeMinimumZ();
+        cube.maxZ = this.getCubeMaximumZ();
+
+        return cube;
+    };
+
+    /**
      * Sets if a light is inserted into the scene.
      * @param value - Boolean value.
      */
@@ -487,8 +597,9 @@ EarthServerGenericClient.SceneManager = function()
      * @param cubeMinZ - Minimum value on the z-axis.
      * @param cubeMaxZ - Maximum value on the z-axis
      * @param unitSize - Size after a grid line will be drawn.
+     * @param lineSize - Thickness of a grid line.
      */
-    this.setDrawGrid = function(cubeMinX,cubeMaxX,cubeMinY,cubeMaxY,cubeMinZ,cubeMaxZ,unitSize)
+    this.setDrawGrid = function(cubeMinX,cubeMaxX,cubeMinY,cubeMaxY,cubeMinZ,cubeMaxZ,unitSize,lineSize)
     {
         if(cubeMinX < cubeMaxX && cubeMinY < cubeMaxY && cubeMinZ < cubeMaxZ)
         {
@@ -498,6 +609,7 @@ EarthServerGenericClient.SceneManager = function()
                 this.GridMinAxisValue = [cubeMinX,cubeMinY,cubeMinZ];
                 this.GridMaxAxisValue = [cubeMaxX,cubeMaxY,cubeMaxZ];
                 this.GridUnitSize = unitSize;
+                this.GridLineSize = lineSize || 2;
             }
             else
             {   console.log("EarthServerGenericClient::drawGrid: UnitSize must be a positive number.");    }
@@ -1009,7 +1121,6 @@ EarthServerGenericClient.SceneManager = function()
         this.setView(camID);
     };
 
-
     /**
      * Returns the number of defined cameras
      * @returns {Number}
@@ -1142,7 +1253,6 @@ EarthServerGenericClient.SceneManager = function()
            customCam = null;
        }
 
-
         // Cube
         if( drawCube)
         {
@@ -1199,9 +1309,15 @@ EarthServerGenericClient.SceneManager = function()
                 this.appendCubeGrid(scene,this.GridMinAxisValue[0],this.GridMaxAxisValue[0],
                     this.GridMinAxisValue[1],this.GridMaxAxisValue[1],
                     this.GridMinAxisValue[2],this.GridMaxAxisValue[2],
-                    this.GridUnitSize);
+                    this.GridUnitSize, this.GridLineSize);
             }
 
+        }
+
+        if( subsetting )
+        {
+            subsetManager = new EarthServerGenericClient.SubsetManager(true,true,true);
+            subsetManager.addSlicesToScene(scene);
         }
 
         if( CubeBaseQuery !== null)
@@ -1214,6 +1330,7 @@ EarthServerGenericClient.SceneManager = function()
             var baseCoords       = document.createElement("Coordinate");
             var basePoints = "";
 
+            baseAppearance.setAttribute('sortType', 'opaque');
             baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
             baseImageTexture.setAttribute("url", CubeBaseQuery);
             basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZ + " ";
@@ -1340,154 +1457,50 @@ EarthServerGenericClient.SceneManager = function()
 
     };
 
-    this.appendCubeGridShader = function(domElement, normal, color)
-    {
-        /*
-            Back face culling does not work is it should.
-            To sheck if backface > 0.245 is a hack for now.
-            TODO: FIX it.
-         */
-
-        var cShader = document.createElement("composedShader");
-        var field1  = document.createElement("field");
-        field1.setAttribute("name","GridNormal");
-        field1.setAttribute("type","SFVec3f");
-        field1.setAttribute("value",normal);
-        cShader.appendChild(field1);
-
-        var field2  = document.createElement("field");
-        field2.setAttribute("name","matCol");
-        field2.setAttribute("type","SFVec3f");
-        field2.setAttribute("value",color);
-        cShader.appendChild(field2);
-
-        var vertexCode = "attribute vec3 position; \n";
-        vertexCode += "uniform mat4 normalMatrix; \n";
-        vertexCode += "uniform mat4 modelViewProjectionMatrix; \n";
-        vertexCode += "uniform mat4 modelViewMatrix; \n";
-        vertexCode += "uniform mat4 projectionMatrix; \n";
-        vertexCode += "uniform vec3 GridNormal; \n";
-        vertexCode += "varying float backface; \n";
-        vertexCode += "varying vec4 fragNormal; \n";
-        vertexCode += "varying vec4 fragPosition; \n";
-        vertexCode += "void main() { \n";
-        //vertexCode += "fragNormal = (normalMatrix * vec4(GridNormal,0.0)); \n";
-        //vertexCode += "fragPosition = (modelViewProjectionMatrix* vec4(position, 1.0)); \n";
-        vertexCode += "vec4 transformGridNormal = (normalMatrix * vec4(GridNormal,0.0)); \n";
-        vertexCode += "backface = dot(transformGridNormal, vec4(0.0, 0.0, 1.0, 0.0)); \n";
-        vertexCode += "gl_Position = modelViewProjectionMatrix * vec4(position, 1.0); } \n";
-
-        var shaderPartVertex = document.createElement("shaderPart");
-        shaderPartVertex.setAttribute("type","VERTEX");
-        shaderPartVertex.setAttribute("DEF","EarthServerGenericClient_GRID_VERTEXSHADER");
-        shaderPartVertex.innerHTML = vertexCode;
-        cShader.appendChild(shaderPartVertex);
-
-        var fragmentCode = "#ifdef GL_FRAGMENT_PRECISION_HIGH \n";
-        fragmentCode += "precision highp float; \n";
-        fragmentCode += "#else \n";
-        fragmentCode += "precision mediump float; \n";
-        fragmentCode += "#endif \n";
-        fragmentCode += "uniform vec3 matCol; \n";
-        fragmentCode += "varying float backface; \n";
-        fragmentCode += "varying vec4 fragNormal; \n";
-        fragmentCode += "varying vec4 fragPosition; \n";
-        fragmentCode += "void main() { \n";
-        //fragmentCode += "vec4 N = normalize(fragNormal);\n";
-        //fragmentCode += "vec4 E = fragPosition;\n";
-        //fragmentCode += "if (dot(E, N) > 0.0){ discard; }\n";
-        fragmentCode += "if( backface > 0.245 ){ discard; } \n";
-        fragmentCode += "gl_FragColor = vec4(matCol, 1.0); } \n";
-
-        var shaderPartFragment = document.createElement("shaderPart");
-        shaderPartFragment.setAttribute("type","FRAGMENT");
-        shaderPartFragment.setAttribute("DEF","EarthServerGenericClient_GRID_FRAGMENTSHADER");
-        shaderPartFragment.innerHTML = fragmentCode;
-        cShader.appendChild(shaderPartFragment);
-
-        domElement.appendChild( cShader );
-
-        cShader = null;
-        field1 = null;
-        field2 = null;
-        shaderPartVertex = null;
-        shaderPartFragment = null;
-    };
-
-    this.appendCubeGridShaderUse = function(domElement, normal, color)
-    {
-        var cShader = document.createElement("composedShader");
-        var field1  = document.createElement("field");
-        field1.setAttribute("name","GridNormal");
-        field1.setAttribute("type","SFVec3f");
-        field1.setAttribute("value",normal);
-        cShader.appendChild(field1);
-
-        var field2  = document.createElement("field");
-        field2.setAttribute("name","matCol");
-        field2.setAttribute("type","SFVec3f");
-        field2.setAttribute("value",color);
-        cShader.appendChild(field2);
-
-        var shaderPartVertex = document.createElement("shaderPart");
-        shaderPartVertex.setAttribute("type","VERTEX");
-        shaderPartVertex.setAttribute("use","EarthServerGenericClient_GRID_VERTEXSHADER");
-        cShader.appendChild(shaderPartVertex);
-
-        var shaderPartFragment = document.createElement("shaderPart");
-        shaderPartFragment.setAttribute("type","FRAGMENT");
-        shaderPartFragment.setAttribute("use","EarthServerGenericClient_GRID_FRAGMENTSHADER");
-        cShader.appendChild(shaderPartFragment);
-
-        domElement.appendChild( cShader );
-
-
-        field1 = null;
-        field2 = null;
-        shaderPartVertex = null;
-        shaderPartFragment = null;
-        cShader = null;
-    };
-
-    this.appendCubeGrid = function(root,minX,maxX,minY,maxY,minZ,maxZ,unitSize)
+    this.appendCubeGrid = function(root,minX,maxX,minY,maxY,minZ,maxZ,unitSize,lineSize)
     {
         // Creates shapes and appearances for every side
         var shapeFront   = document.createElement('Shape');
-        var linesetFront = document.createElement('IndexedLineSet');
-        linesetFront.setAttribute("colorPerVertex", "false");
+        var trissetFront = document.createElement('IndexedTriangleSet');
+        trissetFront.setAttribute("colorPerVertex", "false");
         var coordsFront = document.createElement('Coordinate');
 
         var shapeBack   = document.createElement('Shape');
-        var linesetBack = document.createElement('IndexedLineSet');
-        linesetBack.setAttribute("colorPerVertex", "false");
+        var trissetBack = document.createElement('IndexedTriangleSet');
+        trissetBack.setAttribute("colorPerVertex", "false");
         var coordsBack = document.createElement('Coordinate');
 
         var shapeLeft   = document.createElement('Shape');
-        var linesetLeft = document.createElement('IndexedLineSet');
-        linesetLeft.setAttribute("colorPerVertex", "false");
+        var trissetLeft = document.createElement('IndexedTriangleSet');
+        trissetLeft.setAttribute("colorPerVertex", "false");
         var coordsLeft = document.createElement('Coordinate');
 
         var shapeRight   = document.createElement('Shape');
-        var linesetRight = document.createElement('IndexedLineSet');
+        var linesetRight = document.createElement('IndexedTriangleSet');
         linesetRight.setAttribute("colorPerVertex", "false");
         var coordsRight = document.createElement('Coordinate');
 
         var shapeBottom   = document.createElement('Shape');
-        var linesetBottom = document.createElement('IndexedLineSet');
-        linesetBottom.setAttribute("colorPerVertex", "false");
+        var trissetBottom = document.createElement('IndexedTriangleSet');
+        trissetBottom.setAttribute("colorPerVertex", "false");
         var coordsBottom = document.createElement('Coordinate');
 
-        var GridColor = "0.7 0.7 0.7 ";
         var appearance = document.createElement('Appearance');
-        this.appendCubeGridShader(appearance,"0.0 -1.0 0.0",GridColor);
+        var material   = document.createElement('Material');
+        material.setAttribute("diffuseColor","1.0 1.0 1.0");
+        material.setAttribute("specularColor","1.0 1.0 1.0");
+        var AppearanceDef = "EarthServerClient::GridAppDef";
+        appearance.appendChild(material);
+        appearance.setAttribute("ID",AppearanceDef);
+
         var appearanceFront = document.createElement('Appearance');
-        this.appendCubeGridShaderUse(appearanceFront,"0.0 0.0 -1.0",GridColor);
+        appearanceFront.setAttribute("Use",AppearanceDef);
         var appearanceBack = document.createElement('Appearance');
-        this.appendCubeGridShaderUse(appearanceBack,"0.0 0.0 1.0",GridColor);
+        appearanceBack.setAttribute("Use",AppearanceDef);
         var appearanceLeft = document.createElement('Appearance');
-        this.appendCubeGridShaderUse(appearanceLeft,"-1.0 0.0 0",GridColor);
+        appearanceLeft.setAttribute("Use",AppearanceDef);
         var appearanceRight = document.createElement('Appearance');
-        this.appendCubeGridShaderUse(appearanceRight,"1.0 0.0 0",GridColor);
+        appearanceRight.setAttribute("Use",AppearanceDef);
 
         var nXLines = parseInt( (maxX - minX) / unitSize );
         var nYLines = parseInt( (maxY - minY) / unitSize );
@@ -1511,24 +1524,32 @@ EarthServerGenericClient.SceneManager = function()
         for(var i=1; i< nXLines;i++)
         {
             // vertical
-            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeY    + " " + cubeZNeg);
-            p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)          )+ " " + cubeY    + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)          )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZNeg);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeY    + " " + cubeZNeg);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         for(i=1; i<nYLines;i++)
         {
             // horizontal
             p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
             p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         var stringP = "";
         for( i=0; i< p.length; i++)
         {   stringP = stringP+p[i]+" ";   }
         coordsFront.setAttribute("point", stringP);
-        linesetFront.setAttribute("coordIndex",indices);
+        trissetFront.setAttribute("index",indices);
         p = [];
         indices = "";
         indexCounter = 0;
@@ -1539,22 +1560,30 @@ EarthServerGenericClient.SceneManager = function()
             // vertical
             p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZ);
             p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeY    + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeY    + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZ);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         for(i=1; i<nYLines;i++)
         {
             // horizontal
-            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
             p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ);
+            p.push(""+ cubeX    + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         stringP = "";
         for( i=0; i< p.length; i++)
         {   stringP = stringP+p[i]+" ";   }
         coordsBack.setAttribute("point", stringP);
-        linesetBack.setAttribute("coordIndex",indices);
+        trissetBack.setAttribute("Index",indices);
         p = [];
         indices = "";
         indexCounter = 0;
@@ -1563,24 +1592,32 @@ EarthServerGenericClient.SceneManager = function()
         for( i=1; i< nZLines;i++)
         {
             // vertical
-            p.push(""+ cubeXNeg + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
             p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeY    + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         for(i=1; i<nYLines;i++)
         {
             // horizontal
-            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
-            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ   );
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ);
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg   );
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg   );
+            p.push(""+ cubeXNeg + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         stringP = "";
         for( i=0; i< p.length; i++)
         {   stringP = stringP+p[i]+" ";   }
         coordsLeft.setAttribute("point", stringP);
-        linesetLeft.setAttribute("coordIndex",indices);
+        trissetLeft.setAttribute("Index",indices);
         p = [];
         indices = "";
         indexCounter = 0;
@@ -1589,24 +1626,32 @@ EarthServerGenericClient.SceneManager = function()
         for( i=1; i< nZLines;i++)
         {
             // vertical
-            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
             p.push(""+ cubeX + " " + cubeY    + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            p.push(""+ cubeX + " " + cubeY    + " " + (cubeZNeg+(i*zSize)+lineSize) );
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         for(i=1; i<nYLines;i++)
         {
             // horizontal
             p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)) + " " + cubeZNeg);
             p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)) + " " + cubeZ   );
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZ   );
+            p.push(""+ cubeX + " " + (cubeYNeg+(i*ySize)+lineSize) + " " + cubeZNeg);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         stringP = "";
         for( i=0; i< p.length; i++)
         {   stringP = stringP+p[i]+" ";   }
         coordsRight.setAttribute("point", stringP);
-        linesetRight.setAttribute("coordIndex",indices);
+        linesetRight.setAttribute("Index",indices);
         p = [];
         indices = "";
         indexCounter = 0;
@@ -1617,41 +1662,49 @@ EarthServerGenericClient.SceneManager = function()
             // Front to back
             p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZNeg);
             p.push(""+ (cubeXNeg+(i*xSize) )+ " " + cubeYNeg + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZ);
+            p.push(""+ (cubeXNeg+(i*xSize)+lineSize )+ " " + cubeYNeg + " " + cubeZNeg);
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         for( i=1; i< nZLines;i++)
         {
             // Side to side
+            p.push(""+ cubeX    + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
             p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
-            p.push(""+ cubeX + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)) );
+            p.push(""+ cubeXNeg + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
+            p.push(""+ cubeX    + " " + cubeYNeg + " " + (cubeZNeg+(i*zSize)+lineSize) );
             // Indices
-            indices +="" + indexCounter++ + " " + indexCounter++ + " -1 ";
+            indices +="" + indexCounter++ + " " + indexCounter++ +  " " + indexCounter++ + " ";
+            indices +="" + (indexCounter-1) + " " + (indexCounter) + " " + (indexCounter-3) + " ";
+            indexCounter++;
         }
         stringP = "";
         for( i=0; i< p.length; i++)
         {   stringP = stringP+p[i]+" ";   }
         coordsBottom.setAttribute("point", stringP);
-        linesetBottom.setAttribute("coordIndex",indices);
+        trissetBottom.setAttribute("Index",indices);
 
         shapeBottom.appendChild(appearance);
-        shapeBottom.appendChild(linesetBottom);
-        linesetBottom.appendChild(coordsBottom);
+        shapeBottom.appendChild(trissetBottom);
+        trissetBottom.appendChild(coordsBottom);
         root.appendChild(shapeBottom);
 
         shapeFront.appendChild(appearanceFront);
-        shapeFront.appendChild(linesetFront);
-        linesetFront.appendChild(coordsFront);
+        shapeFront.appendChild(trissetFront);
+        trissetFront.appendChild(coordsFront);
         root.appendChild(shapeFront);
 
         shapeBack.appendChild(appearanceBack);
-        shapeBack.appendChild(linesetBack);
-        linesetBack.appendChild(coordsBack);
+        shapeBack.appendChild(trissetBack);
+        trissetBack.appendChild(coordsBack);
         root.appendChild(shapeBack);
 
         shapeLeft.appendChild(appearanceLeft);
-        shapeLeft.appendChild(linesetLeft);
-        linesetLeft.appendChild(coordsLeft);
+        shapeLeft.appendChild(trissetLeft);
+        trissetLeft.appendChild(coordsLeft);
         root.appendChild(shapeLeft);
 
         shapeRight.appendChild(appearanceRight);
@@ -1660,17 +1713,17 @@ EarthServerGenericClient.SceneManager = function()
         root.appendChild(shapeRight);
 
         shapeFront   = null;
-        linesetFront = null;
+        trissetFront = null;
         coordsFront = null;
         appearanceFront = null;
 
         shapeBack   = null;
-        linesetBack = null;
+        trissetBack = null;
         coordsBack = null;
         appearanceBack = null;
 
         shapeLeft   = null;
-        linesetLeft = null;
+        trissetLeft = null;
         coordsLeft = null;
         appearanceLeft = null;
 
@@ -1680,7 +1733,7 @@ EarthServerGenericClient.SceneManager = function()
         appearanceRight = null;
 
         shapeBottom = null;
-        linesetBottom = null;
+        trissetBottom = null;
         coordsBottom = null;
 
         appearance = null;
@@ -2004,6 +2057,20 @@ EarthServerGenericClient.SceneManager = function()
         {
             models[i].createModel(this.trans,cubeSizeX,cubeSizeY,cubeSizeZ);
         }
+        // add child/parent dependency
+        for(i=0; i< models.length; i++)
+        {
+            if( models[i].isChildOf !== null)
+            {
+                var index = this.getModelIndex(models[i].isChildOf );
+                if( index >= 0)
+                {
+                    models[index].addBinding( models[i] );
+                }
+                else
+                {   console.log("EarthServerGenericClient:MainScene: Can't find parent with name " + models[i].isChildOf );    }
+            }
+        }
     };
 
     /**
@@ -2207,7 +2274,7 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
-     * Update Offset changes the position selected SceneModel on the x-,y- or z-Axis.
+     * Update Offset changes the position of the selected SceneModel on the x-,y- or z-Axis.
      * @param modelIndex - Index of the model that should be altered
      * @param which - Which Axis will be changed (0:X 1:Y 2:Z)
      * @param value - The new position
@@ -2218,34 +2285,39 @@ EarthServerGenericClient.SceneManager = function()
 
         if( trans )
         {
-            // off set of the cube
+            // offset of the cube
             var offset=0;
             // the minValue is the scaled minimum value of the data at the given axis
             // some terrains start with 0 at all axis, others do not.
             var minValue = EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
-
-            var scale = trans.getAttribute("scale");
-            scale = scale.split(" ");
+            var delta = 0;
+            var scale    = x3dom.fields.SFVec3f.parse( trans.getAttribute("scale") );
+            var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
+            var newTrans;
 
             switch(which)
             {
                 case 0: offset = cubeSizeX/2.0;
-                        minValue *= scale[0];
+                        minValue *= scale.x;
+                        newTrans = (value - offset- minValue) *offSetScaling;
+                        delta = oldTrans.x - newTrans;
+                        oldTrans.x = newTrans;
                         break;
                 case 1: offset = cubeSizeY/2.0;
-                        minValue *= scale[1];
+                        minValue *= scale.y;
+                        newTrans = (value - offset- minValue) *offSetScaling;
+                        delta = oldTrans.y - newTrans;
+                        oldTrans.y = newTrans;
                         break;
                 case 2: offset = cubeSizeZ/2.0;
-                        minValue *= scale[2];
+                        minValue *= scale.z;
+                        newTrans = (value - offset- minValue) *offSetScaling;
+                        delta = oldTrans.z - newTrans;
+                        oldTrans.z = newTrans;
                         break;
             }
-
-            console.log(minValue);
-            var oldTrans = trans.getAttribute("translation");
-            oldTrans = oldTrans.split(" ");
-            var delta = oldTrans[which] - (value - offset);
-            oldTrans[which] = value - offset- minValue;
-            trans.setAttribute("translation",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
+            // update translation and call bindings with the delta
+            trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z );
             models[modelIndex].movementUpdateBindings(which,delta);
         }
     };
@@ -2262,10 +2334,22 @@ EarthServerGenericClient.SceneManager = function()
 
         if( trans )
         {
-            var oldTrans = trans.getAttribute("translation");
-            oldTrans = oldTrans.split(" ");
-            oldTrans[which] = parseFloat(oldTrans[which]) - parseFloat(delta);
-            trans.setAttribute("translation",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
+            var oldTrans = x3dom.fields.SFVec3f.parse(trans.getAttribute("translation"));
+
+            switch(which)
+            {
+                case 0:
+                    oldTrans.x = parseFloat(oldTrans.x) - parseFloat(delta);
+                    break;
+                case 1:
+                    oldTrans.y = parseFloat(oldTrans.y) - parseFloat(delta);
+                    break;
+                case 2:
+                    oldTrans.z = parseFloat(oldTrans.z) - parseFloat(delta);
+                    break;
+            }
+
+            trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z);
             models[modelIndex].movementUpdateBindings(which,delta);
         }
         else
@@ -2563,6 +2647,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     /**
      * Sets the height resolution of the model. This effects the scaling of the elevation of the model.
      * The parameter should be the difference between the smallest and biggest value of the DEM.
+     * Setting the same value for this and setHeightMinimum for all models puts them on the same scale.
      * Make the sure the value fits to the model's size.
      * @param value
      */
@@ -2571,6 +2656,21 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         if( !isNaN(value) ) // has to be a number or undefined behavior will occur
         {
             this.YResolution = value;
+        }
+    };
+
+    /**
+     * Sets the minimum height of the model. This affects the scaling of the elevation of the model.
+     * The parameter should be less than the minimum value of the DEM.
+     * Setting the same value for this and setHeightResolution for all models puts them on the same scale.
+     * Make the sure the value fits to the model's size.
+     * @param value
+     */
+    this.setHeightMinimum = function( value )
+    {
+        if( !isNaN(value) ) // has to be a number or undefined behavior will occur
+        {
+            this.YMinimum = value;
         }
     };
 
@@ -2768,7 +2868,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$MINY",this.miny);
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$MAXX",this.maxx);
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$MAXY",this.maxy);
-        out = EarthServerGenericClient.replaceAllFindsInString(out,"$CRS" ,'"' + this.CRS + '"');
+        out = EarthServerGenericClient.replaceAllFindsInString(out,"$CRS" ,this.CRS);
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$RESX",this.XResolution);
         // allows users to use either $RESY or $RESZ
         out = EarthServerGenericClient.replaceAllFindsInString(out,"$RESZ",this.ZResolution);
@@ -2837,6 +2937,35 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Add this module as a child of the module with the parameter parentName.
+     * @param parentName
+     */
+    this.addAsChildOf = function( parentName )
+    {
+        this.isChildOf = parentName;
+    };
+
+    /**
+     * Returns a list of all children (including children of children).
+     * Used to detect loops.
+     */
+    this.getChildList = function()
+    {
+        var children = [];
+
+        for(var i=0; i<this.bindings.length;i++)
+        {
+            // add name of every child
+            children.push(this.bindings[i].name );
+            // add list of child names of every child
+            var tmp = this.bindings[i].getChildList();
+            children = children.concat(tmp);
+        }
+
+        return children;
+    };
+
+    /**
      * Adds an Object that will be informed about movements and alterations of the model.
      * @param bindingObject - Object that will receive the notification.
      */
@@ -2879,10 +3008,12 @@ EarthServerGenericClient.AbstractSceneModel = function(){
      */
     this.movementUpdateBindings = function(movementType,value)
     {
+        this.updateLock = true;
         for(var i=0; i<this.bindings.length;i++)
         {
             this.bindings[i].movementUpdateBoundModule(movementType,value);
         }
+        this.updateLock = false;
     };
 
     /**
@@ -2891,6 +3022,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
      */
     this.elevationUpdateBinding = function(value)
     {
+        this.updateLock = true;
         if(value === undefined)
         {   value = 10; }//TODO DEFINE some basic start values for UI etc.
 
@@ -2898,6 +3030,66 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         {
             this.bindings[i].elevationUpdateBoundModule(value);
         }
+        this.updateLock = false;
+    };
+
+    /**
+     * Sets the index of the scene model the sharad module is bound to.
+     * @param index - Index of the scene model.
+     */
+    this.setBoundModuleIndex = function(index)
+    {
+        if(index === this.index)//prevent to bind this module to itself
+        {
+            console.log("Module_Base: Can't bind module to itself.");
+        }
+        else
+        {
+            this.boundModelIndex = index;
+        }
+    };
+
+    /**
+     * Returns the index of the model sharad module is bound to.
+     * @returns {number} - Index of the model or -1 if unbound.
+     */
+    this.getBoundModuleIndex = function()
+    {
+        return this.boundModelIndex;
+    };
+
+    /**
+     * Resets the modelIndex sharad module is bound to back to -1 and marks it as unbound.
+     */
+    this.releaseBinding = function()
+    {
+        this.boundModelIndex = -1;
+    };
+
+    /**
+     * If the module is bound to another module the module shall move when the other module is moved.
+     * This function shall receive the delta of the positions every time the module is moved.
+     * @param axis - Axis of the movement.
+     * @param delta - Delta to the last position.
+     */
+    this.movementUpdateBoundModule = function(axis,delta)
+    {
+        if( !this.updateLock )
+            EarthServerGenericClient.MainScene.updateOffsetByDelta(this.index,axis,delta);
+        else
+            console.log("ModuleBase: Model " + this.name +" locked. Potential loop in child/parent structure.");
+    };
+
+    /**
+     * This function notifies the module that the bound module's elevation was changed.
+     * All annotation will be checked and altered in their position.
+     */
+    this.elevationUpdateBoundModule = function(value)
+    {
+        if( !this.updateLock )
+            EarthServerGenericClient.MainScene.updateElevation(this.index,value);
+        else
+            console.log("ModuleBase: Model " + this.name +" locked. Potential loop in child/parent structure.");
     };
 
     /**
@@ -3184,6 +3376,18 @@ EarthServerGenericClient.AbstractSceneModel = function(){
          * @type {Number}
          */
         this.index = -1;
+
+        /**
+         * Stores the name of the parent node.
+         * @type {null}
+         */
+        this.isChildOf = null;
+
+        /**
+         * Lock while updating movement of it's children.
+         * @type {boolean}
+         */
+        this.updateLock = false;
     };
 };/**
  * @class Builds one elevation grid chunk. It can consists of several elevation grids to be used in a LOD.
@@ -5400,7 +5604,15 @@ EarthServerGenericClient.requestWCPSImageWCSDem = function(callback,WCPSurl,WCPS
     EarthServerGenericClient.getCoverageWCS(combine,responseData,WCSurl,WCScoverID,WCSBoundingBox,WCSVersion);
 };
 
-
+/**
+ * Requests one Image and one DEM bot via WCPS. The Image and DEM can be requested from
+ * different service endpoints.
+ * @param callback - Module requesting this data.
+ * @param imageURL - URL of the WCPS endpoint for the image.
+ * @param imageQuery - Query to receive the image.
+ * @param demURL - URL of the WCPS endpoint for the DEM.
+ * @param demQuery - Query to receive the DEM.
+ */
 EarthServerGenericClient.requestWCPSImageWCPSDem = function(callback,imageURL,imageQuery,demURL,demQuery)
 {
     var responseData = new EarthServerGenericClient.ServerResponseData();
@@ -5440,9 +5652,9 @@ EarthServerGenericClient.requestWMSImageWCSDem = function(callback,BoundingBox,R
  * @param BoundingBox - Bounding box of the area, used in both WMS and WCS requests.
  * @param ResX - Width of the response image via WMS.
  * @param ResY - Height of the response image via WMS.
- * @param WMSurl - URL of the WMS service.
+ * @param WMSurl - URL of the WMS endpoint.
  * @param WMScoverID - Layer ID used in WMS.
- * @param WMSversion - Version of the WMS service.
+ * @param WMSversion - Version of the WMS endpoint.
  * @param WMSCRS - The Coordinate Reference System. (Should be like: "crs=1")
  * @param WMSImageFormat - Image format for the WMS response.
  * @param WCPSurl - URL for the WCPS Query
@@ -5457,6 +5669,13 @@ EarthServerGenericClient.requestWMSImageWCPSDem = function( callback,BoundingBox
     EarthServerGenericClient.getWCPSDemCoverage(combine,responseData,WCPSurl,WCPSquery);
 };
 
+/**
+ * Function to receive multiple Images via WCPS. After all images are received
+ * the callback function is called with an array of ServerResponseData.
+ * @param callback - Module requesting the data.
+ * @param URLWCPS - URL of the WCPS endpoint.
+ * @param WCPSQuery - Array of WCPS queries.
+ */
 EarthServerGenericClient.requestWCPSImages = function(callback, URLWCPS, WCPSQuery)
 {
     var combine = new EarthServerGenericClient.combinedCallBack(callback,WCPSQuery.length,true);
@@ -5475,17 +5694,16 @@ EarthServerGenericClient.requestWCPSImages = function(callback, URLWCPS, WCPSQue
 };
 
 /**
- * TODO:
- * @param callback
- * @param WCSurl
- * @param WCSversion
- * @param WCScoverID
- * @param minx
- * @param maxx
- * @param miny
- * @param maxy
- * @param minh
- * @param maxh
+ * @param callback - Module requesting the data.
+ * @param WCSurl - URL of the WCS endpoint.
+ * @param WCSversion - Version of the WCS endpoint.
+ * @param WCScoverID - Coverage ID.
+ * @param minx - Latitude subset minimum.
+ * @param maxx - Latitude subset maximum.
+ * @param miny - Longitude subset minimum.
+ * @param maxy - Longitude subset maximum.
+ * @param minh - Height subset minimum.
+ * @param maxh - height subset maximum.
  */
 EarthServerGenericClient.requestWCSPointCloud = function(callback,WCSurl,WCSversion,WCScoverID,minx,maxx,miny,maxy,minh,maxh)
 {
@@ -5892,51 +6110,6 @@ EarthServerGenericClient.Module_Sharad.prototype.receiveData = function(data)
 };
 
 /**
- * Sets the index of the scene model the sharad module is bound to.
- * @param index - Index of the scene model.
- */
-EarthServerGenericClient.Module_Sharad.prototype.setBoundModuleIndex = function(index)
-{
-    if(index === this.index)//prevent to bind this module to itself
-    {
-        console.log("Module_Sharad: Can't bind module to itself.");
-    }
-    else
-    {
-        console.log("Module_Sharad: Bound to model: " + index);
-        this.boundModelIndex = index;
-    }
-};
-
-/**
- * Returns the index of the model sharad module is bound to.
- * @returns {number} - Index of the model or -1 if unbound.
- */
-EarthServerGenericClient.Module_Sharad.prototype.getBoundModuleIndex = function()
-{
-    return this.boundModelIndex;
-};
-
-/**
- * Resets the modelIndex sharad module is bound to back to -1 and marks it as unbound.
- */
-EarthServerGenericClient.Module_Sharad.prototype.releaseBinding = function()
-{
-    this.boundModelIndex = -1;
-};
-
-/**
- * If sharad module is bound to another module the sharad module shall move when the other module is moved.
- * This function shall receive the delta of the positions every time the module is moved.
- * @param axis - Axis of the movement.
- * @param delta - Delta to the last position.
- */
-EarthServerGenericClient.Module_Sharad.prototype.movementUpdateBoundModule = function(axis,delta)
-{
-   EarthServerGenericClient.MainScene.updateOffsetByDelta(this.index,axis,delta);
-};
-
-/**
  * This function notifies sharad module that the bound module's elevation was changed.
  * All annotation will be checked and altered in their position.
  */
@@ -5950,18 +6123,18 @@ EarthServerGenericClient.Module_Sharad.prototype.elevationUpdateBoundModule = fu
         // call elevation update to it self
         EarthServerGenericClient.MainScene.updateElevation(this.index,value);
         // get height of the bound module. (for now at the center of the cube
-        var value = EarthServerGenericClient.MainScene.getHeightAt3DPosition(this.boundModelIndex,x,z);
-        console.log(value);
-        // get own transformation by name "EarthServerGenericClient_modelTransform"+this.index);
+        var HeightValue = EarthServerGenericClient.MainScene.getHeightAt3DPosition(this.boundModelIndex,x,z);
+
+        // get own transformation
         var trans = document.getElementById("EarthServerGenericClient_modelTransform"+this.index);
         if( trans)
         {
             var scale = trans.getAttribute("scale");
             scale = scale.split(" ");
-            // determine exact value
-            value = value + (this.cubeSizeY/2) - ( this.YResolution * scale[1] * this.yScale );
+            // determine exact HeightValue
+            HeightValue = HeightValue + (this.cubeSizeY/2) - ( this.YResolution * scale[1] * this.yScale );
             //update offset
-            EarthServerGenericClient.MainScene.updateOffset(this.index,1,value);
+            EarthServerGenericClient.MainScene.updateOffset(this.index,1,HeightValue);
         }
         else
         {   console.log("EarthServerClient::Module_Sharad not able to find transform.");    }
@@ -6213,7 +6386,8 @@ EarthServerGenericClient.Model_WCPSDemAlpha.prototype.receiveData = function( da
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
-        this.transformNode = this.createTransform(data.width,YResolution,data.height,parseFloat(data.minHMvalue),data.minXvalue,data.minZvalue);
+        var YMinimum =  this.YMinimum || parseFloat(data.minHMvalue);
+        this.transformNode = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         this.root.appendChild(this.transformNode);
 
         //Create Terrain out of the received data
@@ -6417,7 +6591,8 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.receiveData= function( data)
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
-        var transform = this.createTransform(data.width,YResolution,data.height,parseFloat(data.minHMvalue),data.minXvalue,data.minZvalue);
+        var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
+        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -6611,7 +6786,8 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.receiveData= function( data
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
-        var transform = this.createTransform(data.width,YResolution,data.height,parseFloat(data.minHMvalue),data.minXvalue,data.minZvalue);
+        var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
+        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -6775,9 +6951,10 @@ EarthServerGenericClient.Model_WCSPointCloud.prototype.receiveData = function( d
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
+        var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
 
         // build transform
-        this.transformNode = this.createTransform(data.width,YResolution,data.height,data.minHMvalue,data.minXvalue,data.minZvalue);
+        this.transformNode = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         /*this.transformNode = document.createElement("transform");
         this.transformNode.setAttribute("id", "EarthServerGenericClient_modelTransform"+this.index);
         this.transformNode.setAttribute("onclick","EarthServerGenericClient.MainScene.OnClickFunction("+this.index+",event.hitPnt);");
@@ -6951,7 +7128,8 @@ EarthServerGenericClient.Model_WMSDemWCS.prototype.receiveData= function( data)
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
-        var transform = this.createTransform(data.width,YResolution,data.height,parseFloat(data.minHMvalue),data.minXvalue,data.minZvalue);
+        var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
+        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -7149,7 +7327,8 @@ EarthServerGenericClient.Model_WMSDemWCPS.prototype.receiveData= function( data)
         this.removePlaceHolder();
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
-        var transform = this.createTransform(data.width,YResolution,data.height,parseFloat(data.minHMvalue),data.minXvalue,data.minZvalue);
+        var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
+        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -7360,6 +7539,45 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
         adiv=null;
         ap=null;
     }
+
+    if( EarthServerGenericClient.MainScene.getSubsettingFlag())
+    {
+        var Sname = document.createElement("h3");
+        Sname.innerHTML = "SubSetting";
+        var Sdiv = document.createElement("div");
+        //Set IDs
+        Sname.setAttribute("id","EarthServerGenericClient_S_HEADER");
+        Sdiv.setAttribute("id","EarthServerGenericClient_S_Div");
+
+        UI_DIV.appendChild(Sname);
+        UI_DIV.appendChild(Sdiv);
+
+        var values = EarthServerGenericClient.MainScene.getSubSettingValues();
+        var start = [];
+
+        if( values.hasX )
+        {
+            start[0] = values.minX;
+            start[1] = values.maxX;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_X","SUBSETTING",0,values.minX,values.maxX,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+        if( values.hasY )
+        {
+            start[0] = values.minY;
+            start[1] = values.maxY;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Y","SUBSETTING",1,values.minY,values.maxY,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+        if( values.hasZ )
+        {
+            start[0] = values.minZ;
+            start[1] = values.maxZ;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Z","SUBSETTING",2,values.minZ,values.maxZ,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+
+        Sname=null;
+        Sdiv=null;
+    }
+
     $( "#"+domElementID ).accordion({
         heightStyle: "content",
         collapsible: true
@@ -7442,6 +7660,38 @@ EarthServerGenericClient.appendGenericSlider = function(domElement,sliderID,labe
 
 };
 
+/**
+ * Generic range sliders are calling their callback function with an element ID and their values.
+ * @param domElement - Append the slider to this dom element.
+ * @param sliderID - Dom ID for this slider.
+ * @param label - Label (displayed in the UI) for this slider
+ * @param elementID - First parameter for the callback function. Change the module with this ID.
+ * @param min - Minimum value of this slider.
+ * @param max - Maximum value of this slider.
+ * @param startValue - Start value of this slider.
+ * @param callback - Callback function, every time the slider is moved this function will be called.
+ */
+EarthServerGenericClient.appendRangeSlider = function(domElement,sliderID,label,elementID,min,max,startValue,callback)
+{
+    var p = document.createElement("p");
+    p.innerHTML = label;
+    domElement.appendChild(p);
+
+    var slider = document.createElement("div");
+    slider.setAttribute("id",sliderID);
+    domElement.appendChild(slider);
+
+    $( "#"+sliderID ).slider({
+        range: true,
+        min: min,
+        max: max,
+        values: [startValue[0],startValue[1] ],
+        slide: function( event, ui ) {
+            callback(elementID,ui.values[0],ui.values[1]);
+        }
+    });
+
+};
 /**
  * Special slider for setting the transparency of scene models.
  * @param domElement - Append the slider to this dom element.
