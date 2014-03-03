@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 27.02.2014
+ * @version 0.7 alpha 03.03.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -330,12 +330,26 @@ EarthServerGenericClient.SceneManager = function()
     {
         if( subsetManager )
         {
-            return subsetManager.getWorldValues();
+            return subsetManager.getValues();
         }
         else
             return null;
     };
 
+    /**
+     * Returns the world values of the subsetting slices.
+     * Or null if subsetting is disabled.
+     * @returns {*}
+     */
+    this.getSubSettingWorldValues = function()
+    {
+        if( subsetManager )
+        {
+            return subsetManager.getWorldValues();
+        }
+        else
+            return null;
+    };
     /**
      * Updates the subsetting values after a slider event.
      * @param axis - Which Axis was changed.
@@ -2424,8 +2438,6 @@ EarthServerGenericClient.SceneManager = function()
             oldTrans[1] = value*baseElevation[modelIndex]/10;
 
             trans.setAttribute("scale",oldTrans[0] + " " + oldTrans[1] + " " + oldTrans[2]);
-
-            models[modelIndex].updateTranslationForElevation(oldTrans[1]);
             models[modelIndex].elevationUpdateBinding(value);
         }
     };

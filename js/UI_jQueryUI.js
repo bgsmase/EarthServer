@@ -194,27 +194,34 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
         UI_DIV.appendChild(Sname);
         UI_DIV.appendChild(Sdiv);
 
-        var values = EarthServerGenericClient.MainScene.getSubSettingValues();
+        var values = EarthServerGenericClient.MainScene.getSubSettingWorldValues();
         var start = [];
+
+        /*
+         Note about the sliders: The cube is using X and Z axis is base and Y as height.
+         While this is standard in computer graphics it can confuse users.
+         Because of this the labels on Y and Z are switched.
+         */
 
         if( values.hasX )
         {
             start[0] = values.minX;
             start[1] = values.maxX;
-            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_X","SUBSETTING",0,values.minX,values.maxX,start, EarthServerGenericClient.MainScene.setSubSettingValues);
-        }
-        if( values.hasY )
-        {
-            start[0] = values.minY;
-            start[1] = values.maxY;
-            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Y","SUBSETTING",1,values.minY,values.maxY,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_X","X",0,values.minX,values.maxX,start, EarthServerGenericClient.MainScene.setSubSettingValues);
         }
         if( values.hasZ )
         {
             start[0] = values.minZ;
             start[1] = values.maxZ;
-            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Z","SUBSETTING",2,values.minZ,values.maxZ,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Z","Y",2,values.minZ,values.maxZ,start, EarthServerGenericClient.MainScene.setSubSettingValues);
         }
+        if( values.hasY )
+        {
+            start[0] = values.minY;
+            start[1] = values.maxY;
+            EarthServerGenericClient.appendRangeSlider(Sdiv,"EarthServerGenericClient_SUBSETTING_SLIDER_Y","Z",1,values.minY,values.maxY,start, EarthServerGenericClient.MainScene.setSubSettingValues);
+        }
+
 
         Sname=null;
         Sdiv=null;
