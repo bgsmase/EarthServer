@@ -5033,8 +5033,6 @@ EarthServerGenericClient.TimeProgressTerrain = function(root,data,index,layers,h
         // insert all layers with the first texture now. In nextFrame() all the other textures/materials.
         for(var i=0; i< this.layers; i++)
         {
-            console.log( this.data[i].texture );
-
             var canvasIndex = "" + this.index + "_" + i;
             this.canvasTextures.push( this.createCanvas( this.data[i].texture,canvasIndex,undefined,this.data[i].removeAlphaChannel) );
             this.appearances.push( this.getAppearances("TerrainApp_"+this.index+i,1,this.index,this.canvasTextures[i],
@@ -5045,21 +5043,20 @@ EarthServerGenericClient.TimeProgressTerrain = function(root,data,index,layers,h
         }
 
         hoursProcessed++;
-
-        // register callback for nextFrame()
-        for( i=hoursProcessed; i< this.hours; i++)
-        {
-            EarthServerGenericClient.MainScene.enterCallbackForNextFrame( this.index );
-        }
     };
 
     /**
      * The Scene Manager calls this function after a few frames since the last insertion of a chunk.
      */
-    this.nextFrame = function()
+    this.addNextHour = function(patch)
     {
         try
         {
+            for(var o=0; o<patch.length;o++)
+            {
+                this.data.push( patch[o]);
+            }
+
             // create additional canvases
             for(var i=0; i< this.layers; i++)
             {
@@ -6419,6 +6416,12 @@ EarthServerGenericClient.Model_LayersTimeProgress = function()
      * @type {String}
      */
     this.queriedHours = [];
+
+    /**
+     * Number of already queried patches (layers of one hour).
+     * @type {number}
+     */
+    this.queriedPatches = 0;
 };
 EarthServerGenericClient.Model_LayersTimeProgress.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
 
@@ -6543,27 +6546,17 @@ EarthServerGenericClient.Model_LayersTimeProgress.prototype.createModel=function
         return;
     }
 
-    // build query
-    if( this.WCPSQuery.length === 0 )
+    // build query patch ( first hour )
+    for(var i=0; i< this.queriedLayers.length;i++)
     {
-        for(var j=0; j< this.queriedHours.length;j++)
-        {
-            for(var i=0; i< this.queriedLayers.length;i++)
-            {
-                var queryString  = "for data in (" + this.coverageLayer +")";
-                queryString     += "return encode((data[t:"+ this.CRS + "(" + this.coverageTime +"),";
-                queryString     += 'd4:'+ this.CRS +'('+ this.queriedLayers[i]+ ')]).'+ this.queriedHours[j] +',"png")';
+        var queryString  = "for data in (" + this.coverageLayer +")";
+        queryString     += "return encode((data[t:"+ this.CRS + "(" + this.coverageTime +"),";
+        queryString     += 'd4:'+ this.CRS +'('+ this.queriedLayers[i]+ ')]).'+ this.queriedHours[0] +',"png")';
 
-                this.WCPSQuery.push( queryString );
-            }
-        }
+        this.WCPSQuery.push( queryString );
+    }
 
-        console.log( this.WCPSQuery );
-    }
-    else // use custom query
-    {
-        this.replaceSymbolsInString(this.WCPSQuery);
-    }
+    this.queriedPatches++;
 
     // request data
     EarthServerGenericClient.requestWCPSImages(this,this.URLWCPS,this.WCPSQuery);
@@ -6575,8 +6568,6 @@ EarthServerGenericClient.Model_LayersTimeProgress.prototype.createModel=function
  */
 EarthServerGenericClient.Model_LayersTimeProgress.prototype.receiveData = function( data)
 {
-    console.log( data );
-
     var failedData = 0;
     for(var i=0;i<data.length;i++)
     {
@@ -6589,15 +6580,44 @@ EarthServerGenericClient.Model_LayersTimeProgress.prototype.receiveData = functi
     if( failedData == data.length) return;
 
     // create transform
-    this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
-    this.root.appendChild(this.transformNode);
+    if( this.transformNode === undefined || this.transformNode === null)
+    {
+        this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
+        this.root.appendChild(this.transformNode);
+    }
 
     // create terrain
-    EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-    this.terrain = new EarthServerGenericClient.TimeProgressTerrain(this.transformNode,data,this.index,this.queriedLayers.length,this.queriedHours.length);
-    this.terrain.createTerrain();
-    EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
+    if( this.terrain === undefined || this.terrain === null)
+    {
+        EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
+        this.terrain = new EarthServerGenericClient.TimeProgressTerrain(this.transformNode,data,this.index,this.queriedLayers.length,this.queriedHours.length);
+        this.terrain.createTerrain();
+        EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
+    }
+    else
+    {
+        this.terrain.addNextHour(data);
+    }
 
+    // create queries for next patch
+    if( this.queriedPatches < this.queriedHours.length )
+    {
+        this.WCPSQuery = [];
+        // request next patch
+        for( i=0; i< this.queriedLayers.length;i++)
+        {
+            var queryString  = "for data in (" + this.coverageLayer +")";
+            queryString     += "return encode((data[t:"+ this.CRS + "(" + this.coverageTime +"),";
+            queryString     += 'd4:'+ this.CRS +'('+ this.queriedLayers[i]+ ')]).'+ this.queriedHours[this.queriedPatches] +',"png")';
+
+            this.WCPSQuery.push( queryString );
+        }
+
+        this.queriedPatches++;
+
+        // request data
+        EarthServerGenericClient.requestWCPSImages(this,this.URLWCPS,this.WCPSQuery);
+    }
 };
 
 EarthServerGenericClient.Model_LayersTimeProgress.prototype.updateHour = function(value)
