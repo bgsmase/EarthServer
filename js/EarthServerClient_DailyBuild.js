@@ -2288,6 +2288,17 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Updates the model's hour setting.
+     * @param modelIndex - Index of the model.
+     * @param value - Value to set [0-maximum hour].
+     */
+    this.updateModelHour = function(modelIndex,value)
+    {
+        if( modelIndex <models.length && modelIndex >=0)
+            models[modelIndex].updateHour(value);
+    };
+
+    /**
      * Update Offset changes the position of the selected SceneModel on the x-,y- or z-Axis.
      * @param modelIndex - Index of the model that should be altered
      * @param which - Which Axis will be changed (0:X 1:Y 2:Z)
@@ -3752,6 +3763,18 @@ EarthServerGenericClient.AbstractTerrain = function()
     var AppearanceDefined = [];
 
     /**
+     * Index of the terrain. This index is the same as the index of the model the terrain belongs to.
+     * @type {number}
+     */
+    this.index = -1;
+
+    /**
+     * Received date for this terrain.
+     * @type {null}
+     */
+    this.data = null;
+
+    /**
      * @ignore Empty default stub for nexFrame() function.
      */
     this.nextFrame = function()
@@ -3805,6 +3828,49 @@ EarthServerGenericClient.AbstractTerrain = function()
             console.log("EarthServerGenericClient::AbstractTerrain::getMinDataValueAtAxis(): this.data is not defined");
             return 0;
         }
+    };
+
+    /**
+     * Creates a plane shape with the given appearance.
+     * @param root - Node to append the transform to.
+     * @param appearance - Appearance for the shape.
+     * @param shapeNumber - Number of the shape (used for creating ID).
+     * @param yTranslation - Translation of the plane on the y axis.
+     * @returns {HTMLElement}
+     */
+    this.createPlaneWithMaterial = function(root, appearance, shapeNumber, yTranslation)
+    {
+        var shape,transform,grid, coordsNode;
+
+        transform = document.createElement("transform");
+        transform.setAttribute("translation","0 "+ yTranslation +" 0");
+
+        shape = document.createElement('Shape');
+        shape.setAttribute("id",this.index+"_shape_"+shapeNumber+"_"+0);
+
+        coordsNode = document.createElement('Coordinate');
+        coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
+
+        grid = document.createElement('IndexedFaceSet');
+        grid.setAttribute("solid", "false");
+        grid.setAttribute("colorPerVertex", "false");
+
+        grid.setAttribute("coordIndex", "0 1 2 3 -1");
+        grid.appendChild( coordsNode );
+
+        shape.appendChild(appearance);
+        shape.appendChild(grid);
+        transform.appendChild(shape);
+
+        root.appendChild(transform);
+
+        // set vars null
+        shape = null;
+        grid = null;
+        coordsNode = null;
+
+        EarthServerGenericClient.MainScene.reportProgress(this.index);
+        return transform;
     };
 
     /**
@@ -3918,7 +3984,6 @@ EarthServerGenericClient.AbstractTerrain = function()
         }
         else
         {
-
             var newCanvas = document.createElement("canvas");
             newCanvas.style.display = "none";
             newCanvas.width  = this.data.texture.width;
@@ -4735,39 +4800,14 @@ EarthServerGenericClient.VolumeTerrain = function(root,dataArray,index,noDataVal
     // create planes with textures
     for(i=0; i<dataArray.length;i++)
     {
-        var shape,transform,grid, coordsNode;
-
-        transform = document.createElement("transform");
-        transform.setAttribute("translation","0 "+ i +" 0");
-
-        shape = document.createElement('Shape');
-        shape.setAttribute("id",this.index+"_shape_"+i+"_"+0);
-
-        coordsNode = document.createElement('Coordinate');
-        coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
-
-        grid = document.createElement('IndexedFaceSet');
-        grid.setAttribute("solid", "false");
-        grid.setAttribute("colorPerVertex", "false");
-
-        grid.setAttribute("coordIndex", "0 1 2 3 -1");
-        grid.appendChild( coordsNode );
-
-        shape.appendChild(this.appearances[i][0]);
-        shape.appendChild(grid);
-        transform.appendChild(shape);
-
-        root.appendChild(transform);
-
-        // set vars null
-        shape = null;
-        grid = null;
-        transform = null;
-        coordsNode = null;
-
-        EarthServerGenericClient.MainScene.reportProgress(this.index);
+        //(root, appearance, shapeNumber, yTranslation)
+        this.createPlaneWithMaterial(root,this.appearances[i][0], i,i);
     }
 
+    /**
+     * Updates the number of layers to be shown.
+     * @param value - Number of layers.
+     */
     this.updateMaxShownElements = function(value)
     {
         this.setDrawnElements(value,this.focus);
@@ -4969,7 +5009,102 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
             console.log("EarthServerGenericClient.PointCloudTerrain: Can't find light position field.")
     };
 };
-EarthServerGenericClient.PointCloudTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);//Namespace
+EarthServerGenericClient.PointCloudTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
+
+EarthServerGenericClient.TimeProgressTerrain = function(root,data,index,layers,hours)
+{
+    this.materialNodes  = [];//Stores the IDs of the materials to change the transparency.
+    this.canvasTextures = [];
+    this.appearances    = [];
+    this.planes         = [];
+    this.data   = data;
+    this.index  = index;
+    this.layers = layers;
+    this.hours  = hours;
+
+    var hoursProcessed = 0; // counter for the materials to be inserted into the dom.
+    var transforms = [];
+
+    /**
+     * Builds the terrain and appends it into the scene.
+     */
+    this.createTerrain= function()
+    {
+        // insert all layers with the first texture now. In nextFrame() all the other textures/materials.
+        for(var i=0; i< this.layers; i++)
+        {
+            console.log( this.data[i].texture );
+
+            var canvasIndex = "" + this.index + "_" + i;
+            this.canvasTextures.push( this.createCanvas( this.data[i].texture,canvasIndex,undefined,this.data[i].removeAlphaChannel) );
+            this.appearances.push( this.getAppearances("TerrainApp_"+this.index+i,1,this.index,this.canvasTextures[i],
+                this.data[i].transparency,this.data[i].specularColor,this.data[i].diffuseColor) );
+            // create planes with texture
+            transforms.push( this.createPlaneWithMaterial(root,this.appearances[i][0],i,i) );
+            EarthServerGenericClient.MainScene.reportProgress(this.index);
+        }
+
+        hoursProcessed++;
+
+        // register callback for nextFrame()
+        for( i=hoursProcessed; i< this.hours; i++)
+        {
+            EarthServerGenericClient.MainScene.enterCallbackForNextFrame( this.index );
+        }
+    };
+
+    /**
+     * The Scene Manager calls this function after a few frames since the last insertion of a chunk.
+     */
+    this.nextFrame = function()
+    {
+        try
+        {
+            // create additional canvases
+            for(var i=0; i< this.layers; i++)
+            {
+                var materialIndex = ( hoursProcessed*this.layers ) + i;
+                var canvasIndex = "" + this.index + "_" + materialIndex;
+
+                this.canvasTextures.push( this.createCanvas( this.data[materialIndex].texture,canvasIndex,undefined,this.data[materialIndex].removeAlphaChannel) );
+                this.appearances.push( this.getAppearances("TerrainApp_"+this.index+materialIndex,1,this.index,this.canvasTextures[materialIndex],
+                    this.data[materialIndex].transparency,this.data[materialIndex].specularColor,this.data[materialIndex].diffuseColor) );
+                // create planes with texture
+                transforms.push( this.createPlaneWithMaterial(root,this.appearances[materialIndex][0],i,i) );
+                transforms[materialIndex].setAttribute("render","false");
+                EarthServerGenericClient.MainScene.reportProgress(this.index);
+            }
+
+            hoursProcessed++;
+        }
+        catch(error)
+        {
+            alert('TimeProgressTerrain::NextFrame(): ' + error);
+        }
+    };
+
+    this.updateUsedMaterial = function(value)
+    {
+        if( value >= hoursProcessed)
+        {
+            console.log("TimeProgressTerrain::updateUsedMaterial: " + value + " is not a loaded time.");
+            return;
+        }
+
+        for(var i=0; i< transforms.length; i++)
+        {
+            transforms[i].setAttribute("render","false");
+        }
+
+        for( i=0; i< this.layers; i++)
+        {
+            var index = (this.layers*value) +i;
+            transforms[index].setAttribute("render","true");
+        }
+    };
+};
+EarthServerGenericClient.TimeProgressTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
+//Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
 
 /**
@@ -4977,8 +5112,10 @@ var EarthServerGenericClient = EarthServerGenericClient || {};
  * One instance can be given as parameter for different requests if all requests writes different fields.
  * Example: One WMS request for the texture and one WCS request for the heightmap.
  */
-EarthServerGenericClient.ServerResponseData = function () {
-    this.heightmap = null;          // Heightmap
+EarthServerGenericClient.ServerResponseData = function ()
+{
+    this.arrayIndex = 0;            // index to put this data in an array
+    this.heightmap = null;          // Height map
     this.pointCloudCoordinates = null; // Point cloud coordinates
     this.vertexColors = null;       // Color values for vertices or points
     this.noDataValue = undefined;   // The value that should be considered as NODATA.
@@ -5072,7 +5209,7 @@ EarthServerGenericClient.combinedCallBack = function(callback,numberToCombine,sa
         counter++;
 
         if(saveDataInArray)
-            this.dataArray.push(data);
+        {   this.dataArray[data.arrayIndex] = data; }
 
         if( counter ==  numberToCombine)
         {
@@ -5696,6 +5833,7 @@ EarthServerGenericClient.requestWCPSImages = function(callback, URLWCPS, WCPSQue
     for(var o=0; o< WCPSQuery.length;o++)
     {
         responseDataArray.push( new EarthServerGenericClient.ServerResponseData() );
+        responseDataArray[o].arrayIndex = o; // images come in async
         responseDataArray[o].validateHeightMap = false; // no height map will be received
     }
 
@@ -6259,7 +6397,236 @@ var EarthServerGenericClient = EarthServerGenericClient || {};
  * 1 URL for the service, 1 Coverage name data.
  * @augments EarthServerGenericClient.AbstractSceneModel
  */
-EarthServerGenericClient.Model_LayerAndTime = function()
+EarthServerGenericClient.Model_LayersTimeProgress = function()
+{
+    this.setDefaults();
+    this.name = "Coverage with layers and time progress.";
+
+    /**
+     * The custom or default WCPS Queries.
+     * @type {Array}
+     */
+    this.WCPSQuery  = [];
+
+    /**
+     * Queried Layers.
+     * @type {String}
+     */
+    this.queriedLayers = [];
+
+    /**
+     * Queried Hours.
+     * @type {String}
+     */
+    this.queriedHours = [];
+};
+EarthServerGenericClient.Model_LayersTimeProgress.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
+
+/**
+ * Sets the URL for the service.
+ * @param url
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setURL=function(url){
+    /**
+     * URL for the WCPS service.
+     * @type {String}
+     */
+    this.URLWCPS = String(url);
+};
+/**
+ * Sets the coverage name.
+ * @param coverageLayer - Coverage name for the layered data set.
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setCoverage = function (coverageLayer) {
+    /**
+     * Name of the image coverage.
+     * @type {String}
+     */
+    this.coverageLayer = String(coverageLayer);
+};
+/**
+ * Sets the queried layers. E.g. 1:3
+ * @param Layers
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setLayers = function (Layers)
+{
+    var tmpLayers = String(Layers);
+    tmpLayers = tmpLayers.split(":");
+
+    if( tmpLayers.length === 1)
+    {   this.queriedLayers = tmpLayers; }
+    else
+    {
+        for(var i=parseInt(tmpLayers[0]);i<=parseInt(tmpLayers[1]);i++)
+        {   this.queriedLayers.push(i);  }
+    }
+
+    this.requests = this.queriedLayers.length * this.queriedHours.length;
+};
+/**
+ * Sets the coverage time.
+ * @param coverageTime
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setCoverageTime = function (coverageTime) {
+    /**
+     *
+     * @type {String}
+     */
+    this.coverageTime = String(coverageTime);
+};
+
+/**
+ * Sets the requested coverage hours (number of textures to load per level).
+ * @param hours - E.g. 1:6
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setCoverageHours = function( hours )
+{
+    var tmpHours = String(hours);
+    tmpHours = tmpHours.split(":");
+
+    if( tmpHours.length === 1)
+    {   this.queriedHours = tmpHours; }
+    else
+    {
+        for(var i=parseInt(tmpHours[0]);i<=parseInt(tmpHours[1]);i++)
+        {   this.queriedHours.push(i);  }
+    }
+
+    this.requests = this.queriedLayers.length * this.queriedHours.length;
+};
+
+/**
+ * Sets a specific querystring for the data query.
+ * @param queryString - the querystring. Use $CI (coverageImage), $CD (coverageDEM),
+ * $MINX,$MINY,$MAXX,$MAXY(AoI) and $RESX,ResZ (Resolution) for automatic replacement.
+ * Examples: $CI.red , x($MINX:$MINY)
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setWCPSForChannelALPHA = function(queryString)
+{
+    this.WCPSQuery = queryString;
+};
+
+/**
+ * Sets the Coordinate Reference System.
+ * @param value - eg. "http://www.opengis.net/def/crs/EPSG/0/27700"
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setCoordinateReferenceSystem = function(value)
+{
+    this.CRS = value;
+};
+
+/**
+ * Creates the x3d geometry and appends it to the given root node. This is done automatically by the SceneManager.
+ * @param root - X3D node to append the model.
+ * @param cubeSizeX - Size of the fishtank/cube on the x-axis.
+ * @param cubeSizeY - Size of the fishtank/cube on the y-axis.
+ * @param cubeSizeZ - Size of the fishtank/cube on the z-axis.
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.createModel=function(root, cubeSizeX, cubeSizeY, cubeSizeZ){
+    if( root === undefined)
+        alert("root is not defined");
+
+    EarthServerGenericClient.MainScene.timeLogStart("Create Model " + this.name);
+
+    this.cubeSizeX = cubeSizeX;
+    this.cubeSizeY = cubeSizeY;
+    this.cubeSizeZ = cubeSizeZ;
+
+    this.root = root;
+
+    // Check if mandatory values are set
+    if( this.coverageLayer === undefined || this.URLWCPS === undefined ||
+        this.coverageTime === undefined || this.queriedLayers === undefined || this.queriedHours === undefined  )
+    {
+        alert("Not all mandatory values are set. LayerAndTime: " + this.name );
+        console.log(this);
+        return;
+    }
+
+    // build query
+    if( this.WCPSQuery.length === 0 )
+    {
+        for(var j=0; j< this.queriedHours.length;j++)
+        {
+            for(var i=0; i< this.queriedLayers.length;i++)
+            {
+                var queryString  = "for data in (" + this.coverageLayer +")";
+                queryString     += "return encode((data[t:"+ this.CRS + "(" + this.coverageTime +"),";
+                queryString     += 'd4:'+ this.CRS +'('+ this.queriedLayers[i]+ ')]).'+ this.queriedHours[j] +',"png")';
+
+                this.WCPSQuery.push( queryString );
+            }
+        }
+
+        console.log( this.WCPSQuery );
+    }
+    else // use custom query
+    {
+        this.replaceSymbolsInString(this.WCPSQuery);
+    }
+
+    // request data
+    EarthServerGenericClient.requestWCPSImages(this,this.URLWCPS,this.WCPSQuery);
+};
+/**
+ * This is a callback method as soon as the ServerRequest in createModel() has received it's data.
+ * This is done automatically.
+ * @param data - Received data array(!) from the ServerRequest.
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.receiveData = function( data)
+{
+    console.log( data );
+
+    var failedData = 0;
+    for(var i=0;i<data.length;i++)
+    {
+        // TODO: delete only the one element and UI only if all failed.
+        if( !this.checkReceivedData( data[i] ) )
+            failedData++;
+    }
+
+    // if all data failed return
+    if( failedData == data.length) return;
+
+    // create transform
+    this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
+    this.root.appendChild(this.transformNode);
+
+    // create terrain
+    EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
+    this.terrain = new EarthServerGenericClient.TimeProgressTerrain(this.transformNode,data,this.index,this.queriedLayers.length,this.queriedHours.length);
+    this.terrain.createTerrain();
+    EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
+
+};
+
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.updateHour = function(value)
+{
+    if( this.terrain )
+    {
+        this.terrain.updateUsedMaterial(value);
+    }
+    else
+        console.log("EarthServerGenericClient.Model_LayersTimeProgress: No Terrain.")
+};
+
+/**
+ * Every Scene Model creates it's own specific UI elements. This function is called automatically by the SceneManager.
+ * @param element - The element where to append the specific UI elements for this model.
+ */
+EarthServerGenericClient.Model_LayersTimeProgress.prototype.setSpecificElement= function(element)
+{
+   EarthServerGenericClient.appendGenericSlider(element,"Hour_"+this.index,"Time",this.index,
+                    0,this.queriedHours.length-1,0,EarthServerGenericClient.MainScene.updateModelHour);
+};//Namespace
+var EarthServerGenericClient = EarthServerGenericClient || {};
+
+/**
+ * @class Scene Model: Layer and Time. TODO: Add better description
+ * 1 URL for the service, 1 Coverage name data.
+ * @augments EarthServerGenericClient.AbstractSceneModel
+ */
+EarthServerGenericClient.Model_Layers = function()
 {
     this.setDefaults();
     this.name = "Coverage with layers and time.";
@@ -6276,13 +6643,13 @@ EarthServerGenericClient.Model_LayerAndTime = function()
      */
     this.dataModifier = "";
 };
-EarthServerGenericClient.Model_LayerAndTime.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
+EarthServerGenericClient.Model_Layers.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
 
 /**
  * Sets the URL for the service.
  * @param url
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setURL=function(url){
+EarthServerGenericClient.Model_Layers.prototype.setURL=function(url){
     /**
      * URL for the WCPS service.
      * @type {String}
@@ -6293,7 +6660,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setURL=function(url){
  * Sets the coverage name.
  * @param coverageLayer - Coverage name for the layered data set.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverage = function (coverageLayer) {
+EarthServerGenericClient.Model_Layers.prototype.setCoverage = function (coverageLayer) {
     /**
      * Name of the image coverage.
      * @type {String}
@@ -6304,7 +6671,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverage = function (co
  * Sets the queried layers. E.g. 1:3
  * @param Layers
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setLayers = function (Layers) {
+EarthServerGenericClient.Model_Layers.prototype.setLayers = function (Layers) {
     /**
      * Queried Layers.
      * @type {String}
@@ -6328,7 +6695,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setLayers = function (Laye
  * Sets the coverage time.
  * @param coverageTime
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverageTime = function (coverageTime) {
+EarthServerGenericClient.Model_Layers.prototype.setCoverageTime = function (coverageTime) {
     /**
      *
      * @type {String}
@@ -6340,7 +6707,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverageTime = function
  * Sets the data modifier to be multiplied with the data. Eg: 10000
  * @param modifier
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setDataModifier = function( modifier )
+EarthServerGenericClient.Model_Layers.prototype.setDataModifier = function( modifier )
 {
     this.dataModifier = String(modifier) + "*";
 };
@@ -6351,7 +6718,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setDataModifier = function
  * $MINX,$MINY,$MAXX,$MAXY(AoI) and $RESX,ResZ (Resolution) for automatic replacement.
  * Examples: $CI.red , x($MINX:$MINY)
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setWCPSForChannelALPHA = function(queryString)
+EarthServerGenericClient.Model_Layers.prototype.setWCPSForChannelALPHA = function(queryString)
 {
     this.WCPSQuery = queryString;
 };
@@ -6360,7 +6727,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setWCPSForChannelALPHA = f
  * Sets the Coordinate Reference System.
  * @param value - eg. "http://www.opengis.net/def/crs/EPSG/0/27700"
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setCoordinateReferenceSystem = function(value)
+EarthServerGenericClient.Model_Layers.prototype.setCoordinateReferenceSystem = function(value)
 {
     this.CRS = value;
 };
@@ -6372,7 +6739,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setCoordinateReferenceSyst
  * @param cubeSizeY - Size of the fishtank/cube on the y-axis.
  * @param cubeSizeZ - Size of the fishtank/cube on the z-axis.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.createModel=function(root, cubeSizeX, cubeSizeY, cubeSizeZ){
+EarthServerGenericClient.Model_Layers.prototype.createModel=function(root, cubeSizeX, cubeSizeY, cubeSizeZ){
     if( root === undefined)
         alert("root is not defined");
 
@@ -6416,7 +6783,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.createModel=function(root,
  * This is done automatically.
  * @param data - Received data array(!) from the ServerRequest.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.receiveData = function( data)
+EarthServerGenericClient.Model_Layers.prototype.receiveData = function( data)
 {
     var failedData = 0;
     for(var i=0;i<data.length;i++)
@@ -6440,7 +6807,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.receiveData = function( da
 
 };
 
-EarthServerGenericClient.Model_LayerAndTime.prototype.updateMaxShownElements = function(value)
+EarthServerGenericClient.Model_Layers.prototype.updateMaxShownElements = function(value)
 {
     if( this.terrain !== undefined )
         this.terrain.updateMaxShownElements(value);
@@ -6450,7 +6817,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.updateMaxShownElements = f
  * Every Scene Model creates it's own specific UI elements. This function is called automatically by the SceneManager.
  * @param element - The element where to append the specific UI elements for this model.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setSpecificElement= function(element)
+EarthServerGenericClient.Model_Layers.prototype.setSpecificElement= function(element)
 {
     EarthServerGenericClient.appendMaxShownElementsSlider(element,this.index,this.requests);
 };//Namespace

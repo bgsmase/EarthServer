@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Time Progress</title>
+    <link rel="stylesheet" type="text/css" href="css/x3dom.css" />
+    <link rel="stylesheet" type="text/css" href="css/earthservergenericclient.css" />
+    <link rel="stylesheet" type="text/css" href="js-ext/jquery-ui/themes/base/jquery-ui.css">
+
+    <script type="text/javascript" src="js-ext/x3dom-full.js"></script>
+    <script type="text/javascript" src="js-ext/jquery-ui/jquery-1.9.1.js"></script>
+    <script type="text/javascript" src="js-ext/jquery-ui/ui/jquery-ui.js"></script>
+
+    <script type="text/javascript" src="js/EarthServerClient_DailyBuild.js"></script>
+
+    <script type="text/javascript">
+        // basic setup:
+        EarthServerGenericClient.MainScene.setTimeLog(false);//TimeLogging: outputs time of loading and building the models to the console
+        EarthServerGenericClient.MainScene.addLightToScene(true);
+        EarthServerGenericClient.MainScene.setBackground("0.8 0.8 0.95 0.4 0.5 0.85 0.3 0.5 0.85 0.31 0.52 0.85","0.9 1.5 1.57","0.8 0.8 0.95 0.4 0.5 0.85 0.3 0.5 0.85 0.31 0.52 0.85","0.9 1.5 1.57");
+
+        // create the models:
+        $(document).ready(function()
+        {
+            var meeo = new EarthServerGenericClient.Model_LayersTimeProgress();
+            meeo.setName("Time I");
+            meeo.setURL("http://earthserver.services.meeo.it/petascope/wcps.php");
+            meeo.setCoverage("HRES_ENSPM10CONC_4326_01");
+            meeo.setCoverageTime("150895");
+            meeo.setLayers("1:2");
+            meeo.setCoverageHours("1:9");
+            meeo.setCoordinateReferenceSystem('"CRS:1"');
+
+            // add model to the scene
+            EarthServerGenericClient.MainScene.addModel(meeo);
+
+            // create the scene: Cube has 60% height compared to width and length
+            EarthServerGenericClient.MainScene.createScene('x3dScene','theScene',1,0.6,1 );
+
+            EarthServerGenericClient.MainScene.createAxisLabels("Latitude","Height","Longitude");
+        });
+
+        document.onload = function()
+        {
+            // register a progressbar (you can register your own or just delete this lines)
+            var pb = new EarthServerGenericClient.createProgressBar("progressbar");
+            EarthServerGenericClient.MainScene.setProgressCallback(pb.updateValue);
+
+            // create the UI
+            EarthServerGenericClient.MainScene.createUI('x3domUI');
+            // starts loading and creating the models
+            // here the function starts as soon as the html page is fully loaded
+            // you can map this function to e.g. a button
+            EarthServerGenericClient.MainScene.createModels();
+        };
+    </script>
+
+</head>
+<body id="body">
+
+
+
+<div id="x3dom">
+    <div id="progressbar"></div>
+    <X3D id="x3d" showlog="false" showstat="false">
+        <scene id="x3dScene">
+            <group id="root">
+                <group id="theScene" DEF='theScene'></group>
+            </group>
+        </scene>
+    </X3D>
+
+    <div id='x3domUI'></div>
+</div>
+
+</body>
+</html>
