@@ -5099,6 +5099,12 @@ EarthServerGenericClient.TimeProgressTerrain = function(root,data,index,layers,h
             transforms[index].setAttribute("render","true");
         }
     };
+
+    this.getMinDataValueAtAxis = function(axis)
+    {
+        return 0;
+    }
+
 };
 EarthServerGenericClient.TimeProgressTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
 //Namespace
