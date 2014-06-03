@@ -680,7 +680,7 @@ EarthServerGenericClient.SceneManager = function()
         { return models[modelIndex]; }
         else
         {
-            console.log("MainScene::getModelOffsetX: No model with ID " + modelIndex);
+            console.log("MainScene::getModel: No model with ID " + modelIndex);
             return undefined;
         }
     };
