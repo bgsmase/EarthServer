@@ -34,6 +34,7 @@
          */
         EarthServerGenericClient.MainScene.setShortCut("Viewpoint1","1"); // change to viewpoint 1 with "1"
         EarthServerGenericClient.MainScene.setShortCut("ShowViewPoint","b"); // gives an info window with the current viewpoint
+        EarthServerGenericClient.MainScene.setSubSetting(true);
 
         // Onclick function example
         EarthServerGenericClient.MainScene.OnClickFunction = function(modelIndex,hitPoint)
@@ -55,7 +56,6 @@
             BGS.setScale(1,0.3,1);
             BGS.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
             BGS.setSidePanels(true);
-
 
             var BGS_LOW = new EarthServerGenericClient.Model_WCPSDemAlpha();
             BGS_LOW.setName("BGS Low Resolution");
