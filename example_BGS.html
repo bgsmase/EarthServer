@@ -39,8 +39,7 @@
         // Onclick function example
         EarthServerGenericClient.MainScene.OnClickFunction = function(modelIndex,hitPoint)
         {
-            var height = EarthServerGenericClient.MainScene.getDemValueAt3DPosition(modelIndex,hitPoint[0],hitPoint[2]);
-            console.log("Height at clicked position: ",height);
+            console.log( EarthServerGenericClient.MainScene.getSubSettingValues() );
         };
 
         // create the models:
