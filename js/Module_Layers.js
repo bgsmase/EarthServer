@@ -6,7 +6,7 @@ var EarthServerGenericClient = EarthServerGenericClient || {};
  * 1 URL for the service, 1 Coverage name data.
  * @augments EarthServerGenericClient.AbstractSceneModel
  */
-EarthServerGenericClient.Model_LayerAndTime = function()
+EarthServerGenericClient.Model_Layers = function()
 {
     this.setDefaults();
     this.name = "Coverage with layers and time.";
@@ -23,13 +23,13 @@ EarthServerGenericClient.Model_LayerAndTime = function()
      */
     this.dataModifier = "";
 };
-EarthServerGenericClient.Model_LayerAndTime.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
+EarthServerGenericClient.Model_Layers.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
 
 /**
  * Sets the URL for the service.
  * @param url
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setURL=function(url){
+EarthServerGenericClient.Model_Layers.prototype.setURL=function(url){
     /**
      * URL for the WCPS service.
      * @type {String}
@@ -40,7 +40,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setURL=function(url){
  * Sets the coverage name.
  * @param coverageLayer - Coverage name for the layered data set.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverage = function (coverageLayer) {
+EarthServerGenericClient.Model_Layers.prototype.setCoverage = function (coverageLayer) {
     /**
      * Name of the image coverage.
      * @type {String}
@@ -51,7 +51,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverage = function (co
  * Sets the queried layers. E.g. 1:3
  * @param Layers
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setLayers = function (Layers) {
+EarthServerGenericClient.Model_Layers.prototype.setLayers = function (Layers) {
     /**
      * Queried Layers.
      * @type {String}
@@ -75,7 +75,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setLayers = function (Laye
  * Sets the coverage time.
  * @param coverageTime
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverageTime = function (coverageTime) {
+EarthServerGenericClient.Model_Layers.prototype.setCoverageTime = function (coverageTime) {
     /**
      *
      * @type {String}
@@ -87,7 +87,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setCoverageTime = function
  * Sets the data modifier to be multiplied with the data. Eg: 10000
  * @param modifier
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setDataModifier = function( modifier )
+EarthServerGenericClient.Model_Layers.prototype.setDataModifier = function( modifier )
 {
     this.dataModifier = String(modifier) + "*";
 };
@@ -98,7 +98,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setDataModifier = function
  * $MINX,$MINY,$MAXX,$MAXY(AoI) and $RESX,ResZ (Resolution) for automatic replacement.
  * Examples: $CI.red , x($MINX:$MINY)
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setWCPSForChannelALPHA = function(queryString)
+EarthServerGenericClient.Model_Layers.prototype.setWCPSForChannelALPHA = function(queryString)
 {
     this.WCPSQuery = queryString;
 };
@@ -107,7 +107,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setWCPSForChannelALPHA = f
  * Sets the Coordinate Reference System.
  * @param value - eg. "http://www.opengis.net/def/crs/EPSG/0/27700"
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setCoordinateReferenceSystem = function(value)
+EarthServerGenericClient.Model_Layers.prototype.setCoordinateReferenceSystem = function(value)
 {
     this.CRS = value;
 };
@@ -119,7 +119,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.setCoordinateReferenceSyst
  * @param cubeSizeY - Size of the fishtank/cube on the y-axis.
  * @param cubeSizeZ - Size of the fishtank/cube on the z-axis.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.createModel=function(root, cubeSizeX, cubeSizeY, cubeSizeZ){
+EarthServerGenericClient.Model_Layers.prototype.createModel=function(root, cubeSizeX, cubeSizeY, cubeSizeZ){
     if( root === undefined)
         alert("root is not defined");
 
@@ -163,7 +163,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.createModel=function(root,
  * This is done automatically.
  * @param data - Received data array(!) from the ServerRequest.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.receiveData = function( data)
+EarthServerGenericClient.Model_Layers.prototype.receiveData = function( data)
 {
     var failedData = 0;
     for(var i=0;i<data.length;i++)
@@ -187,7 +187,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.receiveData = function( da
 
 };
 
-EarthServerGenericClient.Model_LayerAndTime.prototype.updateMaxShownElements = function(value)
+EarthServerGenericClient.Model_Layers.prototype.updateMaxShownElements = function(value)
 {
     if( this.terrain !== undefined )
         this.terrain.updateMaxShownElements(value);
@@ -197,7 +197,7 @@ EarthServerGenericClient.Model_LayerAndTime.prototype.updateMaxShownElements = f
  * Every Scene Model creates it's own specific UI elements. This function is called automatically by the SceneManager.
  * @param element - The element where to append the specific UI elements for this model.
  */
-EarthServerGenericClient.Model_LayerAndTime.prototype.setSpecificElement= function(element)
+EarthServerGenericClient.Model_Layers.prototype.setSpecificElement= function(element)
 {
     EarthServerGenericClient.appendMaxShownElementsSlider(element,this.index,this.requests);
 };
