@@ -183,7 +183,7 @@ EarthServerGenericClient.Model_WMSDemWCPS.prototype.receiveData= function( data)
         this.elevationUpdateBinding(); // notify all bindings about the terrain elevation update
 
         if(this.sidePanels)
-        {   this.terrain.createSidePanels(transform,1); }
+        {   this.terrain.createSidePanels(transform,1,this.sidePanelsLinks); }
 
         EarthServerGenericClient.MainScene.timeLogEnd("Create Model " + this.name);
 

@@ -35,6 +35,8 @@
         EarthServerGenericClient.MainScene.setShortCut("Viewpoint1","1"); // change to viewpoint 1 with "1"
         EarthServerGenericClient.MainScene.setShortCut("ShowViewPoint","b"); // gives an info window with the current viewpoint
         EarthServerGenericClient.MainScene.setSubSetting(true);
+        // See http://doc.x3dom.org/tutorials/animationInteraction/navigation/index.html for reference
+        EarthServerGenericClient.MainScene.setNavigation("EXAMINE","");
 
         // Onclick function example
         EarthServerGenericClient.MainScene.OnClickFunction = function(modelIndex,hitPoint)
@@ -110,6 +112,11 @@
             demquery += ' scale((i != -340282346638528859811704183484516925440.0) * i, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}) ';
             demquery += ', "csv" )';
             glasgow_witi_t.setWCPSDemQuery(demquery);
+
+            // Child model hierarchy
+            // important: use the name of the parent model
+            BGS_LOW.addAsChildOf( "BGS 2x WCPS" );
+            Bedrock.addAsChildOf( "BGS 2x WCPS" );
 
             // add models to the scene
             EarthServerGenericClient.MainScene.addModel(BGS);

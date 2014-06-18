@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 03.03.2014
+ * @version 0.7 alpha 18.06.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -158,6 +158,8 @@ EarthServerGenericClient.SceneManager = function()
     var offSetScaling = 1.0;        // Global scaling of model offset.
     var subsetting = false;          // Enable slicer for seubsetting
     var subsetManager = null;       // Manager for subsetting
+    var navigationType = null;      // Type of navigation
+    var navigationParams = null;    // Parameters for the navigation type
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -586,14 +588,13 @@ EarthServerGenericClient.SceneManager = function()
 
     /**
      * Sets if the compass should be drawn.
-     * @param value - Boolean value.
      * @param rotation - Rotation of the compass in [0 - 2*PI] (Optional).
      * @param color - Color of the compass (Optional).
      * @param label - Label for the compass (Optional).
      */
-    this.setDrawCompass = function(value, rotation, color, label )
+    this.DrawCompass = function( rotation, color, label )
     {
-        drawCompass = value;
+        drawCompass = true;
         if( drawCompass && rotation !== undefined )
             compassRotation = rotation;
         if( drawCompass && color !== undefined)
@@ -667,6 +668,22 @@ EarthServerGenericClient.SceneManager = function()
     this.getModelCount = function()
     {
         return models.length;
+    };
+
+    /**
+     * Returns the model object with the given index.
+     * @param modelIndex - Index of the model.
+     * @returns {Object}
+     */
+    this.getModel = function(modelIndex)
+    {
+        if(modelIndex < models.length)
+        { return models[modelIndex]; }
+        else
+        {
+            console.log("MainScene::getModel: No model with ID " + modelIndex);
+            return undefined;
+        }
     };
 
     /**
@@ -1076,6 +1093,19 @@ EarthServerGenericClient.SceneManager = function()
     {   return maxResolution;   };
 
     /**
+     * Sets the navigation type and parameters in the x3d window.
+     * The website below gives detailed information about navagation modes.
+     * http://doc.x3dom.org/tutorials/animationInteraction/navigation/index.html
+     * @param type - Type of navigation (e.g. Examine)
+     * @param parameter - Parameters for the navagation type.
+     */
+    this.setNavigation = function(type,parameter)
+    {
+        navigationType   = type;
+        navigationParams = parameter;
+    };
+
+    /**
      * Adds any scene model to the scene.
      * @param model - Any type of scene model.
      */
@@ -1194,8 +1224,19 @@ EarthServerGenericClient.SceneManager = function()
         }
 
         var navigation = document.createElement("navigationInfo");
-        navigation.setAttribute("type",'"TURNTABLE" "ANY"');
-        navigation.setAttribute("typeParams","-0.4, 60, 0.5, 2.55");
+        if( navigationType )
+        {
+            var type = "\"" + String(navigationType) + "\"";
+            console.log(type);
+            navigation.setAttribute("type",String(type));
+            navigation.setAttribute("typeParams",String(navigationParams));
+        }
+        else // default navagation
+        {
+            console.log("noderp");
+            navigation.setAttribute("type",'"TURNTABLE" "ANY"');
+            navigation.setAttribute("typeParams","-0.4, 60, 0.5, 2.55");
+        }
         scene.appendChild(navigation);
 
         // Light
@@ -1341,8 +1382,10 @@ EarthServerGenericClient.SceneManager = function()
             var baseMaterial     = document.createElement("Material");
             var baseImageTexture = document.createElement("ImageTexture");
             var baseTrisSet      = document.createElement("IndexedTriangleSet");
+            var baseTexCoords    = document.createElement("TextureCoordinate");
             var baseCoords       = document.createElement("Coordinate");
             var basePoints = "";
+            var baseTC = "";
 
             baseAppearance.setAttribute('sortType', 'opaque');
             baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
@@ -1351,11 +1394,14 @@ EarthServerGenericClient.SceneManager = function()
             basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZ + " ";
             basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZNeg + " ";
             basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZNeg + " ";
+            baseTC += "0 0 1 0 1 1 0 1";
             baseTrisSet.setAttribute("lit",'false');
             baseTrisSet.setAttribute("index","0 1 2 2 3 0");
 
             baseCoords.setAttribute("point", basePoints);
+            baseTexCoords.setAttribute("point", baseTC);
             baseTrisSet.appendChild(baseCoords);
+            baseTrisSet.appendChild(baseTexCoords);
             baseAppearance.appendChild(baseImageTexture);
             baseAppearance.appendChild(baseMaterial);
             baseShape.appendChild(baseAppearance);
@@ -1363,6 +1409,7 @@ EarthServerGenericClient.SceneManager = function()
             scene.appendChild(baseShape);
 
             baseShape = null;
+            baseTexCoords = null;
             baseAppearance = null;
             baseMaterial = null;
             baseImageTexture = null;
@@ -2314,7 +2361,8 @@ EarthServerGenericClient.SceneManager = function()
             var offset=0;
             // the minValue is the scaled minimum value of the data at the given axis
             // some terrains start with 0 at all axis, others do not.
-            var minValue = EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
+            // check if the user has set Yminimum first.
+            var minValue = models[modelIndex].YMinimum || EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
             var delta = 0;
             var scale    = x3dom.fields.SFVec3f.parse( trans.getAttribute("scale") );
             var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
@@ -2610,7 +2658,8 @@ EarthServerGenericClient.SceneManager = function()
 };
 
 // Create main scene
-EarthServerGenericClient.MainScene = new EarthServerGenericClient.SceneManager();//Namespace
+EarthServerGenericClient.MainScene = new EarthServerGenericClient.SceneManager();
+//Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
 
 /**
@@ -4023,17 +4072,13 @@ EarthServerGenericClient.AbstractTerrain = function()
      * @param modelTrans - Model transformation on the y axis
      * @param modelScale - Models scale on the y axis
      */
-    this.createOneSidePanel = function (domElement,side,width,height,xPos,yPos,spacing,modelTrans,modelScale)
+    this.createOneSidePanel = function (domElement,side,width,height,xPos,yPos,spacing,modelTrans,modelScale,imageLink)
     {
         var trans = document.createElement("transform");
         trans.setAttribute("scale","" + spacing + " 1 " + spacing);
         var shape = document.createElement('shape');
         var faceSet = document.createElement('IndexedFaceSet');
         faceSet.setAttribute("solid","false");
-
-        //Color
-        var color = document.createElement("colorRGBA");
-        color.setAttribute("color", this.getColorSlide(side,width,height) );
 
         var info = {};
         info.chunkWidth = width;
@@ -4042,10 +4087,18 @@ EarthServerGenericClient.AbstractTerrain = function()
         info.ypos = yPos;
 
         var coords = document.createElement('Coordinate');
+        var textureCoords = document.createElement('TextureCoordinate');
         var index = "0 1 3 2 -1 "; // vertex index for the first quad
         var points="";
+        var tc="";
         var bottom = ((-EarthServerGenericClient.MainScene.getCubeSizeY()/2.0) - parseFloat(modelTrans) ) / parseFloat(modelScale);
         var heightData = this.getHeightMap(info);
+        var maxHeight = this.data.maxHMvalue;
+        var app;
+        var mat;
+        var texture;
+
+        console.log(width, height);
 
         // add vertices and indices for the quads
         for(var y=0; y<height;y++)
@@ -4059,14 +4112,43 @@ EarthServerGenericClient.AbstractTerrain = function()
                     var mult = (x+y)*2;
                     index = index + (mult+1) + " " + mult + " " + (mult+2) + " " + (mult+3) + " -1 ";
                 }
+
+                if( imageLink )
+                {
+                    tc =  tc + ( (x+y) / (width+height-1 )) + " " + ( heightData[y][x] / maxHeight ) + " ";
+                    tc =  tc + ( (x+y) / (width+height-1 )) + " 0 "
+                }
             }
         }
 
         faceSet.setAttribute("coordindex",index);
+        faceSet.setAttribute("lit","false");
         coords.setAttribute("point", points);
-
         faceSet.appendChild(coords);
-        faceSet.appendChild(color);
+
+        //Color or image ?
+        if( imageLink )
+        {
+            app = document.createElement("Appearance");
+            app.setAttribute('sortType', 'opaque');
+            mat = document.createElement("Material");
+            texture = document.createElement("ImageTexture");
+            texture.setAttribute("url", imageLink );
+            textureCoords.setAttribute("point", tc);
+            faceSet.setAttribute("colorpervertex","false");
+
+            faceSet.appendChild(textureCoords);
+            app.appendChild(texture);
+            app.appendChild(mat);
+            shape.appendChild(app);
+        }
+        else
+        {
+            var color = document.createElement("colorRGBA");
+            color.setAttribute("color", this.getColorSlide(side,width,height) );
+            faceSet.appendChild(color);
+        }
+
         shape.appendChild(faceSet);
         trans.appendChild(shape);
         domElement.appendChild(trans);
@@ -4085,9 +4167,18 @@ EarthServerGenericClient.AbstractTerrain = function()
      * @param domElement - Transform node of the model.
      * @param spacing - The terrain's shapes spacing value.
      */
-    this.createSidePanels = function(domElement,spacing)
+    this.createSidePanels = function(domElement,spacing,imageLinks)
     {
         if(this.data.texture === undefined) return;
+        if( !imageLinks)
+        {
+            console.log("Setting imageLinks to null");
+            imageLinks = [null,null,null,null];
+        }
+        else
+        {
+            console.log("Using ImageLinks");
+        }
 
         var modelScale = domElement.getAttribute("scale");
         modelScale = modelScale.split(" ");
@@ -4096,10 +4187,10 @@ EarthServerGenericClient.AbstractTerrain = function()
         modelTrans = modelTrans.split(" ");
         modelTrans = modelTrans[1];
 
-        this.createOneSidePanel(domElement,0,1,this.data.height,0,0,spacing,modelTrans,modelScale);
-        this.createOneSidePanel(domElement,1,this.data.width,1,0,0,spacing,modelTrans,modelScale);
-        this.createOneSidePanel(domElement,2,this.data.width,1,0,this.data.height-1,spacing,modelTrans,modelScale);
-        this.createOneSidePanel(domElement,3,1,this.data.height,this.data.width-1,0,spacing,modelTrans,modelScale);
+        this.createOneSidePanel(domElement,0,1,this.data.height,0,0,spacing,modelTrans,modelScale,imageLinks[0]);
+        this.createOneSidePanel(domElement,1,this.data.width,1,0,0,spacing,modelTrans,modelScale,imageLinks[1]);
+        this.createOneSidePanel(domElement,2,this.data.width,1,0,this.data.height-1,spacing,modelTrans,modelScale,imageLinks[2]);
+        this.createOneSidePanel(domElement,3,1,this.data.height,this.data.width-1,0,spacing,modelTrans,modelScale,imageLinks[3]);
 
     };
 
@@ -7329,7 +7420,7 @@ EarthServerGenericClient.Model_WCPSDemAlpha.prototype.receiveData = function( da
             EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
             this.elevationUpdateBinding();
             if(this.sidePanels)
-            {   this.terrain.createSidePanels(this.transformNode,1);    }
+            {   this.terrain.createSidePanels(this.transformNode,1,this.sidePanelsLinks);    }
             EarthServerGenericClient.MainScene.timeLogEnd("Create Model " + this.name);
         }
         else
@@ -7533,7 +7624,7 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.receiveData= function( data)
         this.elevationUpdateBinding();
 
         if(this.sidePanels)
-        {   this.terrain.createSidePanels(transform,1); }
+        {   this.terrain.createSidePanels(transform,1,this.sidePanelsLinks); }
 
         EarthServerGenericClient.MainScene.timeLogEnd("Create Model " + this.name);
 
@@ -7728,7 +7819,7 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.receiveData= function( data
         this.elevationUpdateBinding(); // notify all bindings about the terrain elevation update
 
         if(this.sidePanels)
-        {   this.terrain.createSidePanels(transform,1); }
+        {   this.terrain.createSidePanels(transform,1,this.sidePanelsLinks); }
 
         EarthServerGenericClient.MainScene.timeLogEnd("Create Model " + this.name);
 
@@ -8069,7 +8160,7 @@ EarthServerGenericClient.Model_WMSDemWCS.prototype.receiveData= function( data)
         EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
         this.elevationUpdateBinding();
         if(this.sidePanels)
-        {   this.terrain.createSidePanels(this.transformNode,1);    }
+        {   this.terrain.createSidePanels(this.transformNode,1,this.sidePanelsLinks);    }
         EarthServerGenericClient.MainScene.timeLogEnd("Create Model " + this.name);
 
         transform = null;
@@ -8269,7 +8360,7 @@ EarthServerGenericClient.Model_WMSDemWCPS.prototype.receiveData= function( data)
         this.elevationUpdateBinding(); // notify all bindings about the terrain elevation update
 
         if(this.sidePanels)
-        {   this.terrain.createSidePanels(transform,1); }
+        {   this.terrain.createSidePanels(transform,1,this.sidePanelsLinks); }
 
         EarthServerGenericClient.MainScene.timeLogEnd("Create Model " + this.name);
 

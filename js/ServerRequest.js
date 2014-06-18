@@ -6,8 +6,10 @@ var EarthServerGenericClient = EarthServerGenericClient || {};
  * One instance can be given as parameter for different requests if all requests writes different fields.
  * Example: One WMS request for the texture and one WCS request for the heightmap.
  */
-EarthServerGenericClient.ServerResponseData = function () {
-    this.heightmap = null;          // Heightmap
+EarthServerGenericClient.ServerResponseData = function ()
+{
+    this.arrayIndex = 0;            // index to put this data in an array
+    this.heightmap = null;          // Height map
     this.pointCloudCoordinates = null; // Point cloud coordinates
     this.vertexColors = null;       // Color values for vertices or points
     this.noDataValue = undefined;   // The value that should be considered as NODATA.
@@ -101,7 +103,7 @@ EarthServerGenericClient.combinedCallBack = function(callback,numberToCombine,sa
         counter++;
 
         if(saveDataInArray)
-            this.dataArray.push(data);
+        {   this.dataArray[data.arrayIndex] = data; }
 
         if( counter ==  numberToCombine)
         {
@@ -725,6 +727,7 @@ EarthServerGenericClient.requestWCPSImages = function(callback, URLWCPS, WCPSQue
     for(var o=0; o< WCPSQuery.length;o++)
     {
         responseDataArray.push( new EarthServerGenericClient.ServerResponseData() );
+        responseDataArray[o].arrayIndex = o; // images come in async
         responseDataArray[o].validateHeightMap = false; // no height map will be received
     }
 

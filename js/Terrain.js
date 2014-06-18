@@ -14,6 +14,18 @@ EarthServerGenericClient.AbstractTerrain = function()
     var AppearanceDefined = [];
 
     /**
+     * Index of the terrain. This index is the same as the index of the model the terrain belongs to.
+     * @type {number}
+     */
+    this.index = -1;
+
+    /**
+     * Received date for this terrain.
+     * @type {null}
+     */
+    this.data = null;
+
+    /**
      * @ignore Empty default stub for nexFrame() function.
      */
     this.nextFrame = function()
@@ -67,6 +79,49 @@ EarthServerGenericClient.AbstractTerrain = function()
             console.log("EarthServerGenericClient::AbstractTerrain::getMinDataValueAtAxis(): this.data is not defined");
             return 0;
         }
+    };
+
+    /**
+     * Creates a plane shape with the given appearance.
+     * @param root - Node to append the transform to.
+     * @param appearance - Appearance for the shape.
+     * @param shapeNumber - Number of the shape (used for creating ID).
+     * @param yTranslation - Translation of the plane on the y axis.
+     * @returns {HTMLElement}
+     */
+    this.createPlaneWithMaterial = function(root, appearance, shapeNumber, yTranslation)
+    {
+        var shape,transform,grid, coordsNode;
+
+        transform = document.createElement("transform");
+        transform.setAttribute("translation","0 "+ yTranslation +" 0");
+
+        shape = document.createElement('Shape');
+        shape.setAttribute("id",this.index+"_shape_"+shapeNumber+"_"+0);
+
+        coordsNode = document.createElement('Coordinate');
+        coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
+
+        grid = document.createElement('IndexedFaceSet');
+        grid.setAttribute("solid", "false");
+        grid.setAttribute("colorPerVertex", "false");
+
+        grid.setAttribute("coordIndex", "0 1 2 3 -1");
+        grid.appendChild( coordsNode );
+
+        shape.appendChild(appearance);
+        shape.appendChild(grid);
+        transform.appendChild(shape);
+
+        root.appendChild(transform);
+
+        // set vars null
+        shape = null;
+        grid = null;
+        coordsNode = null;
+
+        EarthServerGenericClient.MainScene.reportProgress(this.index);
+        return transform;
     };
 
     /**
@@ -180,7 +235,6 @@ EarthServerGenericClient.AbstractTerrain = function()
         }
         else
         {
-
             var newCanvas = document.createElement("canvas");
             newCanvas.style.display = "none";
             newCanvas.width  = this.data.texture.width;
@@ -220,17 +274,13 @@ EarthServerGenericClient.AbstractTerrain = function()
      * @param modelTrans - Model transformation on the y axis
      * @param modelScale - Models scale on the y axis
      */
-    this.createOneSidePanel = function (domElement,side,width,height,xPos,yPos,spacing,modelTrans,modelScale)
+    this.createOneSidePanel = function (domElement,side,width,height,xPos,yPos,spacing,modelTrans,modelScale,imageLink)
     {
         var trans = document.createElement("transform");
         trans.setAttribute("scale","" + spacing + " 1 " + spacing);
         var shape = document.createElement('shape');
         var faceSet = document.createElement('IndexedFaceSet');
         faceSet.setAttribute("solid","false");
-
-        //Color
-        var color = document.createElement("colorRGBA");
-        color.setAttribute("color", this.getColorSlide(side,width,height) );
 
         var info = {};
         info.chunkWidth = width;
@@ -239,10 +289,18 @@ EarthServerGenericClient.AbstractTerrain = function()
         info.ypos = yPos;
 
         var coords = document.createElement('Coordinate');
+        var textureCoords = document.createElement('TextureCoordinate');
         var index = "0 1 3 2 -1 "; // vertex index for the first quad
         var points="";
+        var tc="";
         var bottom = ((-EarthServerGenericClient.MainScene.getCubeSizeY()/2.0) - parseFloat(modelTrans) ) / parseFloat(modelScale);
         var heightData = this.getHeightMap(info);
+        var maxHeight = this.data.maxHMvalue;
+        var app;
+        var mat;
+        var texture;
+
+        console.log(width, height);
 
         // add vertices and indices for the quads
         for(var y=0; y<height;y++)
@@ -256,14 +314,43 @@ EarthServerGenericClient.AbstractTerrain = function()
                     var mult = (x+y)*2;
                     index = index + (mult+1) + " " + mult + " " + (mult+2) + " " + (mult+3) + " -1 ";
                 }
+
+                if( imageLink )
+                {
+                    tc =  tc + ( (x+y) / (width+height-1 )) + " " + ( heightData[y][x] / maxHeight ) + " ";
+                    tc =  tc + ( (x+y) / (width+height-1 )) + " 0 "
+                }
             }
         }
 
         faceSet.setAttribute("coordindex",index);
+        faceSet.setAttribute("lit","false");
         coords.setAttribute("point", points);
-
         faceSet.appendChild(coords);
-        faceSet.appendChild(color);
+
+        //Color or image ?
+        if( imageLink )
+        {
+            app = document.createElement("Appearance");
+            app.setAttribute('sortType', 'opaque');
+            mat = document.createElement("Material");
+            texture = document.createElement("ImageTexture");
+            texture.setAttribute("url", imageLink );
+            textureCoords.setAttribute("point", tc);
+            faceSet.setAttribute("colorpervertex","false");
+
+            faceSet.appendChild(textureCoords);
+            app.appendChild(texture);
+            app.appendChild(mat);
+            shape.appendChild(app);
+        }
+        else
+        {
+            var color = document.createElement("colorRGBA");
+            color.setAttribute("color", this.getColorSlide(side,width,height) );
+            faceSet.appendChild(color);
+        }
+
         shape.appendChild(faceSet);
         trans.appendChild(shape);
         domElement.appendChild(trans);
@@ -282,9 +369,18 @@ EarthServerGenericClient.AbstractTerrain = function()
      * @param domElement - Transform node of the model.
      * @param spacing - The terrain's shapes spacing value.
      */
-    this.createSidePanels = function(domElement,spacing)
+    this.createSidePanels = function(domElement,spacing,imageLinks)
     {
         if(this.data.texture === undefined) return;
+        if( !imageLinks)
+        {
+            console.log("Setting imageLinks to null");
+            imageLinks = [null,null,null,null];
+        }
+        else
+        {
+            console.log("Using ImageLinks");
+        }
 
         var modelScale = domElement.getAttribute("scale");
         modelScale = modelScale.split(" ");
@@ -293,10 +389,10 @@ EarthServerGenericClient.AbstractTerrain = function()
         modelTrans = modelTrans.split(" ");
         modelTrans = modelTrans[1];
 
-        this.createOneSidePanel(domElement,0,1,this.data.height,0,0,spacing,modelTrans,modelScale);
-        this.createOneSidePanel(domElement,1,this.data.width,1,0,0,spacing,modelTrans,modelScale);
-        this.createOneSidePanel(domElement,2,this.data.width,1,0,this.data.height-1,spacing,modelTrans,modelScale);
-        this.createOneSidePanel(domElement,3,1,this.data.height,this.data.width-1,0,spacing,modelTrans,modelScale);
+        this.createOneSidePanel(domElement,0,1,this.data.height,0,0,spacing,modelTrans,modelScale,imageLinks[0]);
+        this.createOneSidePanel(domElement,1,this.data.width,1,0,0,spacing,modelTrans,modelScale,imageLinks[1]);
+        this.createOneSidePanel(domElement,2,this.data.width,1,0,this.data.height-1,spacing,modelTrans,modelScale,imageLinks[2]);
+        this.createOneSidePanel(domElement,3,1,this.data.height,this.data.width-1,0,spacing,modelTrans,modelScale,imageLinks[3]);
 
     };
 
@@ -997,39 +1093,14 @@ EarthServerGenericClient.VolumeTerrain = function(root,dataArray,index,noDataVal
     // create planes with textures
     for(i=0; i<dataArray.length;i++)
     {
-        var shape,transform,grid, coordsNode;
-
-        transform = document.createElement("transform");
-        transform.setAttribute("translation","0 "+ i +" 0");
-
-        shape = document.createElement('Shape');
-        shape.setAttribute("id",this.index+"_shape_"+i+"_"+0);
-
-        coordsNode = document.createElement('Coordinate');
-        coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
-
-        grid = document.createElement('IndexedFaceSet');
-        grid.setAttribute("solid", "false");
-        grid.setAttribute("colorPerVertex", "false");
-
-        grid.setAttribute("coordIndex", "0 1 2 3 -1");
-        grid.appendChild( coordsNode );
-
-        shape.appendChild(this.appearances[i][0]);
-        shape.appendChild(grid);
-        transform.appendChild(shape);
-
-        root.appendChild(transform);
-
-        // set vars null
-        shape = null;
-        grid = null;
-        transform = null;
-        coordsNode = null;
-
-        EarthServerGenericClient.MainScene.reportProgress(this.index);
+        //(root, appearance, shapeNumber, yTranslation)
+        this.createPlaneWithMaterial(root,this.appearances[i][0], i,i);
     }
 
+    /**
+     * Updates the number of layers to be shown.
+     * @param value - Number of layers.
+     */
     this.updateMaxShownElements = function(value)
     {
         this.setDrawnElements(value,this.focus);
@@ -1232,3 +1303,100 @@ EarthServerGenericClient.PointCloudTerrain = function(root,data,index,pointSize)
     };
 };
 EarthServerGenericClient.PointCloudTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
+
+EarthServerGenericClient.TimeProgressTerrain = function(root,data,index,layers,hours)
+{
+    this.materialNodes  = [];//Stores the IDs of the materials to change the transparency.
+    this.canvasTextures = [];
+    this.appearances    = [];
+    this.planes         = [];
+    this.data   = data;
+    this.index  = index;
+    this.layers = layers;
+    this.hours  = hours;
+
+    var hoursProcessed = 0; // counter for the materials to be inserted into the dom.
+    var transforms = [];
+
+    /**
+     * Builds the terrain and appends it into the scene.
+     */
+    this.createTerrain= function()
+    {
+        // insert all layers with the first texture now. In nextFrame() all the other textures/materials.
+        for(var i=0; i< this.layers; i++)
+        {
+            var canvasIndex = "" + this.index + "_" + i;
+            this.canvasTextures.push( this.createCanvas( this.data[i].texture,canvasIndex,undefined,this.data[i].removeAlphaChannel) );
+            this.appearances.push( this.getAppearances("TerrainApp_"+this.index+i,1,this.index,this.canvasTextures[i],
+                this.data[i].transparency,this.data[i].specularColor,this.data[i].diffuseColor) );
+            // create planes with texture
+            transforms.push( this.createPlaneWithMaterial(root,this.appearances[i][0],i,i) );
+            EarthServerGenericClient.MainScene.reportProgress(this.index);
+        }
+
+        hoursProcessed++;
+    };
+
+    /**
+     * The Scene Manager calls this function after a few frames since the last insertion of a chunk.
+     */
+    this.addNextHour = function(patch)
+    {
+        try
+        {
+            for(var o=0; o<patch.length;o++)
+            {
+                this.data.push( patch[o]);
+            }
+
+            // create additional canvases
+            for(var i=0; i< this.layers; i++)
+            {
+                var materialIndex = ( hoursProcessed*this.layers ) + i;
+                var canvasIndex = "" + this.index + "_" + materialIndex;
+
+                this.canvasTextures.push( this.createCanvas( this.data[materialIndex].texture,canvasIndex,undefined,this.data[materialIndex].removeAlphaChannel) );
+                this.appearances.push( this.getAppearances("TerrainApp_"+this.index+materialIndex,1,this.index,this.canvasTextures[materialIndex],
+                    this.data[materialIndex].transparency,this.data[materialIndex].specularColor,this.data[materialIndex].diffuseColor) );
+                // create planes with texture
+                transforms.push( this.createPlaneWithMaterial(root,this.appearances[materialIndex][0],i,i) );
+                transforms[materialIndex].setAttribute("render","false");
+                EarthServerGenericClient.MainScene.reportProgress(this.index);
+            }
+
+            hoursProcessed++;
+        }
+        catch(error)
+        {
+            alert('TimeProgressTerrain::NextFrame(): ' + error);
+        }
+    };
+
+    this.updateUsedMaterial = function(value)
+    {
+        if( value >= hoursProcessed)
+        {
+            console.log("TimeProgressTerrain::updateUsedMaterial: " + value + " is not a loaded time.");
+            return;
+        }
+
+        for(var i=0; i< transforms.length; i++)
+        {
+            transforms[i].setAttribute("render","false");
+        }
+
+        for( i=0; i< this.layers; i++)
+        {
+            var index = (this.layers*value) +i;
+            transforms[index].setAttribute("render","true");
+        }
+    };
+
+    this.getMinDataValueAtAxis = function(axis)
+    {
+        return 0;
+    }
+
+};
+EarthServerGenericClient.TimeProgressTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);

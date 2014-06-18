@@ -24,7 +24,7 @@ EarthServerGenericClient.MainScene.setBackground("0.8 0.8 0.95 0.4 0.5 0.85 0.3 
 
 $(document).ready(function()
 {
-    /*var volume = new EarthServerGenericClient.Model_LayerAndTime();
+    /*var volume = new EarthServerGenericClient.Model_Layers();
     volume.setName("Volume");
     volume.setURL("http://earthserver.services.meeo.it/petascope");
     volume.setCoverage("MACC_Q_4326_1125");
@@ -33,7 +33,7 @@ $(document).ready(function()
     volume.setScale(1,1,1);
     volume.setDataModifier(10000);*/
 
-    var volume = new EarthServerGenericClient.Model_LayerAndTime();
+    var volume = new EarthServerGenericClient.Model_Layers();
      volume.setName("Volume");
      volume.setURL("http://earthserver.services.meeo.it/petascope");
      volume.setCoverage("MOD_RETRIEVEDTEMPERATUREPROFILEMEAN_4326_1");
