@@ -1,6 +1,6 @@
 /**
  * @namespace Namespace for the Earth Server Generic Client
- * @version 0.7 alpha 03.03.2014
+ * @version 0.7 alpha 18.06.2014
  */
 var EarthServerGenericClient =  {};
 
@@ -158,6 +158,8 @@ EarthServerGenericClient.SceneManager = function()
     var offSetScaling = 1.0;        // Global scaling of model offset.
     var subsetting = false;          // Enable slicer for seubsetting
     var subsetManager = null;       // Manager for subsetting
+    var navigationType = null;      // Type of navigation
+    var navigationParams = null;    // Parameters for the navigation type
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -586,14 +588,13 @@ EarthServerGenericClient.SceneManager = function()
 
     /**
      * Sets if the compass should be drawn.
-     * @param value - Boolean value.
      * @param rotation - Rotation of the compass in [0 - 2*PI] (Optional).
      * @param color - Color of the compass (Optional).
      * @param label - Label for the compass (Optional).
      */
-    this.setDrawCompass = function(value, rotation, color, label )
+    this.DrawCompass = function( rotation, color, label )
     {
-        drawCompass = value;
+        drawCompass = true;
         if( drawCompass && rotation !== undefined )
             compassRotation = rotation;
         if( drawCompass && color !== undefined)
@@ -1076,6 +1077,19 @@ EarthServerGenericClient.SceneManager = function()
     {   return maxResolution;   };
 
     /**
+     * Sets the navigation type and parameters in the x3d window.
+     * The website below gives detailed information about navagation modes.
+     * http://doc.x3dom.org/tutorials/animationInteraction/navigation/index.html
+     * @param type - Type of navigation (e.g. Examine)
+     * @param parameter - Parameters for the navagation type.
+     */
+    this.setNavigation = function(type,parameter)
+    {
+        navigationType   = type;
+        navigationParams = parameter;
+    };
+
+    /**
      * Adds any scene model to the scene.
      * @param model - Any type of scene model.
      */
@@ -1194,8 +1208,19 @@ EarthServerGenericClient.SceneManager = function()
         }
 
         var navigation = document.createElement("navigationInfo");
-        navigation.setAttribute("type",'"TURNTABLE" "ANY"');
-        navigation.setAttribute("typeParams","-0.4, 60, 0.5, 2.55");
+        if( navigationType )
+        {
+            var type = "\"" + String(navigationType) + "\"";
+            console.log(type);
+            navigation.setAttribute("type",String(type));
+            navigation.setAttribute("typeParams",String(navigationParams));
+        }
+        else // default navagation
+        {
+            console.log("noderp");
+            navigation.setAttribute("type",'"TURNTABLE" "ANY"');
+            navigation.setAttribute("typeParams","-0.4, 60, 0.5, 2.55");
+        }
         scene.appendChild(navigation);
 
         // Light
@@ -1341,8 +1366,10 @@ EarthServerGenericClient.SceneManager = function()
             var baseMaterial     = document.createElement("Material");
             var baseImageTexture = document.createElement("ImageTexture");
             var baseTrisSet      = document.createElement("IndexedTriangleSet");
+            var baseTexCoords    = document.createElement("TextureCoordinate");
             var baseCoords       = document.createElement("Coordinate");
             var basePoints = "";
+            var baseTC = "";
 
             baseAppearance.setAttribute('sortType', 'opaque');
             baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
@@ -1351,11 +1378,14 @@ EarthServerGenericClient.SceneManager = function()
             basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZ + " ";
             basePoints += ""+ cubeX + " " + cubeYNeg + " " + cubeZNeg + " ";
             basePoints += ""+ cubeXNeg + " " + cubeYNeg + " " + cubeZNeg + " ";
+            baseTC += "0 0 1 0 1 1 0 1";
             baseTrisSet.setAttribute("lit",'false');
             baseTrisSet.setAttribute("index","0 1 2 2 3 0");
 
             baseCoords.setAttribute("point", basePoints);
+            baseTexCoords.setAttribute("point", baseTC);
             baseTrisSet.appendChild(baseCoords);
+            baseTrisSet.appendChild(baseTexCoords);
             baseAppearance.appendChild(baseImageTexture);
             baseAppearance.appendChild(baseMaterial);
             baseShape.appendChild(baseAppearance);
@@ -1363,6 +1393,7 @@ EarthServerGenericClient.SceneManager = function()
             scene.appendChild(baseShape);
 
             baseShape = null;
+            baseTexCoords = null;
             baseAppearance = null;
             baseMaterial = null;
             baseImageTexture = null;
@@ -2288,6 +2319,17 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Updates the model's hour setting.
+     * @param modelIndex - Index of the model.
+     * @param value - Value to set [0-maximum hour].
+     */
+    this.updateModelHour = function(modelIndex,value)
+    {
+        if( modelIndex <models.length && modelIndex >=0)
+            models[modelIndex].updateHour(value);
+    };
+
+    /**
      * Update Offset changes the position of the selected SceneModel on the x-,y- or z-Axis.
      * @param modelIndex - Index of the model that should be altered
      * @param which - Which Axis will be changed (0:X 1:Y 2:Z)
@@ -2303,7 +2345,8 @@ EarthServerGenericClient.SceneManager = function()
             var offset=0;
             // the minValue is the scaled minimum value of the data at the given axis
             // some terrains start with 0 at all axis, others do not.
-            var minValue = EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
+            // check if the user has set Yminimum first.
+            var minValue = models[modelIndex].YMinimum || EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
             var delta = 0;
             var scale    = x3dom.fields.SFVec3f.parse( trans.getAttribute("scale") );
             var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
