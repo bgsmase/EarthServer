@@ -197,8 +197,8 @@ EarthServerGenericClient.getWCPSImage = function(callback,responseData,url, quer
                 responseData.height = hm[0].length;
                 responseData.minXvalue = 0;
                 responseData.minZvalue = 0;
-                responseData.maxXvalue = hm.length;
-                responseData.maxZvalue = hm[0].length;
+                responseData.maxXvalue = hm.length - 1;
+                responseData.maxZvalue = hm[0].length - 1;
 
                 var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
                 var total = 0;
@@ -313,8 +313,8 @@ EarthServerGenericClient.getWCPSDemCoverage = function(callback,responseData,WCP
                 responseData.height = hm[0].length;
                 responseData.minXvalue = 0;
                 responseData.minZvalue = 0;
-                responseData.maxXvalue = hm.length;
-                responseData.maxZvalue = hm[0].length;
+                responseData.maxXvalue = hm.length - 1;
+                responseData.maxZvalue = hm[0].length - 1;
                 responseData.heightmap = hm;
 
                 }
