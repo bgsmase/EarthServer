@@ -638,26 +638,24 @@ EarthServerGenericClient.AbstractSceneModel = function(){
      * @param minZvalue - Minimum Value along the z-axis
      * @return {Element}
      */
-    this.createTransform = function(xRes,yRes,zRes,minHeightvalue,minXvalue,minZvalue){
+    this.createTransform = function(minX, minY, minZ, maxX, maxY, maxZ){
         var trans = document.createElement('Transform');
         trans.setAttribute("id", "EarthServerGenericClient_modelTransform"+this.index);
         trans.setAttribute("onclick","EarthServerGenericClient.MainScene.OnClickFunction("+this.index+",event.hitPnt);");
 
-        this.YResolution = yRes;
-        this.minValue = minHeightvalue;
 
-        if(zRes<1) zRes = 2;
+        var sizeX = maxX - minX;
+        var sizeY = maxY - minY;
+        var sizeZ = maxZ - minZ;
 
-       // var scaleX = (this.cubeSizeX*this.xScale)/(Math.ceil(xRes)-1);
-        var scaleX = (this.cubeSizeX*this.xScale)/(xRes-1);
-        var scaleY = (this.cubeSizeY*this.yScale)/this.YResolution;
-        //var scaleZ = (this.cubeSizeZ*this.zScale)/(Math.ceil(zRes)-1);
-        var scaleZ = (this.cubeSizeZ*this.zScale)/(zRes-1);
+        var scaleX = (this.cubeSizeX*this.xScale)/sizeX;
+        var scaleY = (this.cubeSizeY*this.yScale)/sizeY;
+        var scaleZ = (this.cubeSizeZ*this.zScale)/sizeZ;
         trans.setAttribute("scale", "" + scaleX + " " + scaleY + " " + scaleZ);
 
-        var xoff = (this.cubeSizeX * this.xOffset) - (this.cubeSizeX/2.0) - (scaleX * minXvalue);
-        var yoff = (this.cubeSizeY * this.yOffset) - (minHeightvalue*scaleY) - (this.cubeSizeY/2.0);
-        var zoff = (this.cubeSizeZ * this.zOffset) - (this.cubeSizeZ/2.0) - (scaleZ * minZvalue);
+        var xoff = (this.cubeSizeX * this.xOffset) - (this.cubeSizeX/2.0) - (scaleX * minX);
+        var yoff = (this.cubeSizeY * this.yOffset) - (this.cubeSizeY/2.0) - (scaleY * minY);
+        var zoff = (this.cubeSizeZ * this.zOffset) - (this.cubeSizeZ/2.0) - (scaleY * minY);
         trans.setAttribute("translation", "" + xoff+ " " + yoff  + " " + zoff);
 
         return trans;

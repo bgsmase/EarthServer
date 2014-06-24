@@ -177,7 +177,8 @@ EarthServerGenericClient.Model_Layers.prototype.receiveData = function( data)
     if( failedData == data.length) return;
 
     // create transform
-    this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
+    this.transformNode = this.createTransform(0,0,0,1,this.queriedLayers.length - 1,1);
+    this.createTransform(2,this.queriedLayers.length,2,0,0,0);
     this.root.appendChild(this.transformNode);
 
     // create terrain

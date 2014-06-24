@@ -137,7 +137,7 @@ EarthServerGenericClient.Model_WCSPointCloud.prototype.receiveData = function( d
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
 
         // build transform
-        this.transformNode = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        this.transformNode = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         /*this.transformNode = document.createElement("transform");
         this.transformNode.setAttribute("id", "EarthServerGenericClient_modelTransform"+this.index);
         this.transformNode.setAttribute("onclick","EarthServerGenericClient.MainScene.OnClickFunction("+this.index+",event.hitPnt);");

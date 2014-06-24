@@ -172,7 +172,7 @@ EarthServerGenericClient.Model_WMSDemWCPS.prototype.receiveData= function( data)
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
-        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        var transform = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data

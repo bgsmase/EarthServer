@@ -79,8 +79,7 @@ EarthServerGenericClient.Model_Name.prototype.receiveData= function( data)
         //Remove the placeHolder
         this.removePlaceHolder();
 
-        var YResolution = (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
-        var transform = this.createTransform(data.width,YResolution,data.height,parseFloat(data.minHMvalue));
+        var transform = this.createTransform(data.minXvalue,data.minHMvalue,data.minZvalue,data.maxXvalue,data.maxHMvalue,data.maxZvalue);;
         this.root.appendChild( transform);
 
         //Set transparency

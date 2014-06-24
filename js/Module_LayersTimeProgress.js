@@ -194,7 +194,7 @@ EarthServerGenericClient.Model_LayersTimeProgress.prototype.receiveData = functi
     // create transform
     if( this.transformNode === undefined || this.transformNode === null)
     {
-        this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
+        this.transformNode = this.createTransform(0,0,0,1,this.queriedLayers.length - 1,1);
         this.root.appendChild(this.transformNode);
     }
 
