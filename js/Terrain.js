@@ -86,21 +86,36 @@ EarthServerGenericClient.AbstractTerrain = function()
      * @param root - Node to append the transform to.
      * @param appearance - Appearance for the shape.
      * @param shapeNumber - Number of the shape (used for creating ID).
-     * @param yTranslation - Translation of the plane on the y axis.
+     * @param translation - Translation of the plane on the perpendicular axis.
+     * @param axis - perpendicular axis to plane (0=X, 1=Y, 2=Z)
      * @returns {HTMLElement}
      */
-    this.createPlaneWithMaterial = function(root, appearance, shapeNumber, yTranslation)
+    this.createPlaneWithMaterial = function(root, appearance, shapeNumber, translation, axis)
     {
         var shape,transform,grid, coordsNode;
 
+        // For backwards compatibility assume Y axis if not specified
+        if (axis === undefined || axis === null) { axis = 1;}
+
         transform = document.createElement("transform");
-        transform.setAttribute("translation","0 "+ yTranslation +" 0");
+        coordsNode = document.createElement('Coordinate');
+
+        switch (axis)
+        {
+            case 0: transform.setAttribute("translation", translation +" 0 0");
+                    coordsNode.setAttribute("point", "0 0 0 0 1 0 0 1 1 0 0 1");
+                    break;
+            case 1: transform.setAttribute("translation","0 "+ translation +" 0");
+                    coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
+                    break;
+            case 2: transform.setAttribute("translation","0 0 "+ translation);
+                    coordsNode.setAttribute("point", "0 0 0 1 0 0 1 1 0 0 1 0");
+                    break;
+        }
 
         shape = document.createElement('Shape');
         shape.setAttribute("id",this.index+"_shape_"+shapeNumber+"_"+0);
 
-        coordsNode = document.createElement('Coordinate');
-        coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
 
         grid = document.createElement('IndexedFaceSet');
         grid.setAttribute("solid", "false");
