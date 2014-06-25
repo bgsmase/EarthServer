@@ -3299,26 +3299,24 @@ EarthServerGenericClient.AbstractSceneModel = function(){
      * @param minZvalue - Minimum Value along the z-axis
      * @return {Element}
      */
-    this.createTransform = function(xRes,yRes,zRes,minHeightvalue,minXvalue,minZvalue){
+    this.createTransform = function(minX, minY, minZ, maxX, maxY, maxZ){
         var trans = document.createElement('Transform');
         trans.setAttribute("id", "EarthServerGenericClient_modelTransform"+this.index);
         trans.setAttribute("onclick","EarthServerGenericClient.MainScene.OnClickFunction("+this.index+",event.hitPnt);");
 
-        this.YResolution = yRes;
-        this.minValue = minHeightvalue;
 
-        if(zRes<1) zRes = 2;
+        var sizeX = maxX - minX;
+        var sizeY = maxY - minY;
+        var sizeZ = maxZ - minZ;
 
-       // var scaleX = (this.cubeSizeX*this.xScale)/(Math.ceil(xRes)-1);
-        var scaleX = (this.cubeSizeX*this.xScale)/(xRes-1);
-        var scaleY = (this.cubeSizeY*this.yScale)/this.YResolution;
-        //var scaleZ = (this.cubeSizeZ*this.zScale)/(Math.ceil(zRes)-1);
-        var scaleZ = (this.cubeSizeZ*this.zScale)/(zRes-1);
+        var scaleX = (this.cubeSizeX*this.xScale)/sizeX;
+        var scaleY = (this.cubeSizeY*this.yScale)/sizeY;
+        var scaleZ = (this.cubeSizeZ*this.zScale)/sizeZ;
         trans.setAttribute("scale", "" + scaleX + " " + scaleY + " " + scaleZ);
 
-        var xoff = (this.cubeSizeX * this.xOffset) - (this.cubeSizeX/2.0) - (scaleX * minXvalue);
-        var yoff = (this.cubeSizeY * this.yOffset) - (minHeightvalue*scaleY) - (this.cubeSizeY/2.0);
-        var zoff = (this.cubeSizeZ * this.zOffset) - (this.cubeSizeZ/2.0) - (scaleZ * minZvalue);
+        var xoff = (this.cubeSizeX * this.xOffset) - (this.cubeSizeX/2.0) - (scaleX * minX);
+        var yoff = (this.cubeSizeY * this.yOffset) - (this.cubeSizeY/2.0) - (scaleY * minY);
+        var zoff = (this.cubeSizeZ * this.zOffset) - (this.cubeSizeZ/2.0) - (scaleZ * minZ);
         trans.setAttribute("translation", "" + xoff+ " " + yoff  + " " + zoff);
 
         return trans;
@@ -5430,8 +5428,8 @@ EarthServerGenericClient.getWCPSImage = function(callback,responseData,url, quer
                 responseData.height = hm[0].length;
                 responseData.minXvalue = 0;
                 responseData.minZvalue = 0;
-                responseData.maxXvalue = hm.length;
-                responseData.maxZvalue = hm[0].length;
+                responseData.maxXvalue = hm.length - 1;
+                responseData.maxZvalue = hm[0].length - 1;
 
                 var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
                 var total = 0;
@@ -5546,8 +5544,8 @@ EarthServerGenericClient.getWCPSDemCoverage = function(callback,responseData,WCP
                 responseData.height = hm[0].length;
                 responseData.minXvalue = 0;
                 responseData.minZvalue = 0;
-                responseData.maxXvalue = hm.length;
-                responseData.maxZvalue = hm[0].length;
+                responseData.maxXvalue = hm.length - 1;
+                responseData.maxZvalue = hm[0].length - 1;
                 responseData.heightmap = hm;
 
                 }
@@ -6712,7 +6710,7 @@ EarthServerGenericClient.Model_LayersTimeProgress.prototype.receiveData = functi
     // create transform
     if( this.transformNode === undefined || this.transformNode === null)
     {
-        this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
+        this.transformNode = this.createTransform(0,0,0,1,this.queriedLayers.length - 1,1);
         this.root.appendChild(this.transformNode);
     }
 
@@ -6947,7 +6945,7 @@ EarthServerGenericClient.Model_Layers.prototype.receiveData = function( data)
     if( failedData == data.length) return;
 
     // create transform
-    this.transformNode = this.createTransform(2,this.queriedLayers.length,2,0,0,0);
+    this.transformNode = this.createTransform(0,0,0,1,this.queriedLayers.length - 1,1);
     this.root.appendChild(this.transformNode);
 
     // create terrain
@@ -7441,7 +7439,7 @@ EarthServerGenericClient.Model_WCPSDemAlpha.prototype.receiveData = function( da
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
         var YMinimum =  this.YMinimum || parseFloat(data.minHMvalue);
-        this.transformNode = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        this.transformNode = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         this.root.appendChild(this.transformNode);
 
         //Create Terrain out of the received data
@@ -7645,7 +7643,7 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.receiveData= function( data)
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
-        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        var transform = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -7839,7 +7837,7 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.receiveData= function( data
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
-        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        var transform = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -8006,7 +8004,7 @@ EarthServerGenericClient.Model_WCSPointCloud.prototype.receiveData = function( d
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
 
         // build transform
-        this.transformNode = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        this.transformNode = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         /*this.transformNode = document.createElement("transform");
         this.transformNode.setAttribute("id", "EarthServerGenericClient_modelTransform"+this.index);
         this.transformNode.setAttribute("onclick","EarthServerGenericClient.MainScene.OnClickFunction("+this.index+",event.hitPnt);");
@@ -8181,7 +8179,7 @@ EarthServerGenericClient.Model_WMSDemWCS.prototype.receiveData= function( data)
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
-        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        var transform = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
@@ -8381,7 +8379,7 @@ EarthServerGenericClient.Model_WMSDemWCPS.prototype.receiveData= function( data)
 
         var YResolution = this.YResolution || (parseFloat(data.maxHMvalue) - parseFloat(data.minHMvalue) );
         var YMinimum = this.YMinimum || parseFloat(data.minHMvalue);
-        var transform = this.createTransform(data.width,YResolution,data.height,YMinimum,data.minXvalue,data.minZvalue);
+        var transform = this.createTransform(data.minXvalue,YMinimum,data.minZvalue,data.maxXvalue,YMinimum + YResolution,data.maxZvalue);
         this.root.appendChild( transform);
 
         //Create Terrain out of the received data
