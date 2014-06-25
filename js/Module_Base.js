@@ -655,7 +655,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
 
         var xoff = (this.cubeSizeX * this.xOffset) - (this.cubeSizeX/2.0) - (scaleX * minX);
         var yoff = (this.cubeSizeY * this.yOffset) - (this.cubeSizeY/2.0) - (scaleY * minY);
-        var zoff = (this.cubeSizeZ * this.zOffset) - (this.cubeSizeZ/2.0) - (scaleY * minY);
+        var zoff = (this.cubeSizeZ * this.zOffset) - (this.cubeSizeZ/2.0) - (scaleZ * minZ);
         trans.setAttribute("translation", "" + xoff+ " " + yoff  + " " + zoff);
 
         return trans;
