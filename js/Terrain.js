@@ -1124,6 +1124,51 @@ EarthServerGenericClient.VolumeTerrain = function(root,dataArray,index,noDataVal
 EarthServerGenericClient.VolumeTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
 
 /**
+ * Terrain to display slices through a volume
+ * @param root - Dom Element to append the terrain to.
+ * @param dataArray - Received Data array of the Server requests.
+ * @param slices - Array of slice positions
+ * @param index - Index of the model that uses this terrain.
+ * @param noDataValue - No Data Value
+ * @constructor
+ */
+EarthServerGenericClient.VolumeSliceTerrain = function(root,dataArray,slices,index,noDataValue)
+{
+    this.materialNodes = [];//Stores the IDs of the materials to change the transparency.
+    this.data = dataArray;
+    this.index = index;
+    this.noData = noDataValue;
+    this.appearances = [];  // appearances of the layers
+    this.canvasTextures = []; // canvas textures of the layers
+    this.focus = 0;//parseInt( dataArray.length / 2 ) +1;
+
+    //create canvas textures and appearances
+    for(var i=0; i<dataArray.length;i++)
+    {
+        this.canvasTextures.push( this.createCanvas( dataArray[i].texture,index,noDataValue,dataArray[i].removeAlphaChannel) );
+        this.appearances.push( this.getAppearances("TerrainApp_"+this.index+i,1,this.index,this.canvasTextures[i],
+            dataArray[i].transparency,dataArray[i].specularColor,dataArray[i].diffuseColor) );
+    }
+
+    // create planes with textures
+    for(i=0; i<dataArray.length;i++)
+    {
+        //(root, appearance, shapeNumber, yTranslation)
+        this.createPlaneWithMaterial(root,this.appearances[i][0], i,slices[i], 1);
+    }
+
+    /**
+     * Updates the number of layers to be shown.
+     * @param value - Number of layers.
+     */
+    this.updateMaxShownElements = function(value)
+    {
+        this.setDrawnElements(value,this.focus);
+    };
+};
+EarthServerGenericClient.VolumeSliceTerrain.inheritsFrom( EarthServerGenericClient.AbstractTerrain);
+
+/**
  * Terrain to display multiple layers.
  * @param root - Dom Element to append the terrain to.
  * @param data - Received Data of the Server request.
