@@ -109,7 +109,7 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
         for(var i=0; i< this.slices.length;i++)
         {
             this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i] += "return encode(slice( data, Height(" + this.slices[i]+ ')),"png", "nodata=0")';
+            this.WCPSQuery[i] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.slices[i]+ ')),"png", "nodata=0")';
         }
     }
     else //ALL set so use custom query
