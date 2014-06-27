@@ -2361,8 +2361,8 @@ EarthServerGenericClient.SceneManager = function()
             var offset=0;
             // the minValue is the scaled minimum value of the data at the given axis
             // some terrains start with 0 at all axis, others do not.
-            // check if the user has set Yminimum first.
-            var minValue = models[modelIndex].YMinimum || EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
+            // If moving in Y direction (axis=1) check if the user has set Yminimum first.
+            var minValue = (which === 1 && models[modelIndex].YMinimum) || EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
             var delta = 0;
             var scale    = x3dom.fields.SFVec3f.parse( trans.getAttribute("scale") );
             var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
