@@ -110,6 +110,43 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Set X and Z resolutions and minima individually. This way doesn't check
+     * against max resolution as to be used with vertical slices through volume.
+     * This isn't very elegant. 
+     */
+    this.setXResolution = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.XResolution = value;
+        }
+    };
+
+    this.setXMinimum = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.XMinimum = value;
+        }
+    };
+
+    this.setZResolution = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.ZResolution = value;
+        }
+    };
+
+    this.setZMinimum = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.ZMinimum = value;
+        }
+    };
+
+    /**
      * Sets the resolution of the scene model (if possible).
      * @param xRes - Resolution on the x-axis/Latitude
      * @param zRes - Resolution on the z-axis/Longitude
@@ -125,6 +162,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         {   this.ZResolution = maxResolution;   }
 
     };
+
 
     /**
      * Sets the position of the scene model within the fishtank/cube. Values between [0-1]

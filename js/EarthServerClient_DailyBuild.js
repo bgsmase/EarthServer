@@ -2771,6 +2771,43 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Set X and Z resolutions and minima individually. This way doesn't check
+     * against max resolution as to be used with vertical slices through volume.
+     * This isn't very elegant. 
+     */
+    this.setXResolution = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.XResolution = value;
+        }
+    };
+
+    this.setXMinimum = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.XMinimum = value;
+        }
+    };
+
+    this.setZResolution = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.ZResolution = value;
+        }
+    };
+
+    this.setZMinimum = function ( value )
+    {
+        if ( !isNaN(value) )
+        {
+            this.ZMinimum = value;
+        }
+    };
+
+    /**
      * Sets the resolution of the scene model (if possible).
      * @param xRes - Resolution on the x-axis/Latitude
      * @param zRes - Resolution on the z-axis/Longitude
@@ -2786,6 +2823,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
         {   this.ZResolution = maxResolution;   }
 
     };
+
 
     /**
      * Sets the position of the scene model within the fishtank/cube. Values between [0-1]
@@ -7046,6 +7084,10 @@ EarthServerGenericClient.Model_VoxelSlice = function()
      * @type {Array}
      */
     this.WCPSQuery  = [];
+
+    this.xSlices = [];
+    this.ySlices = [];
+    this.zSlices = [];
 };
 EarthServerGenericClient.Model_VoxelSlice.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
 
@@ -7075,14 +7117,34 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.setCoverage = function (cove
  * Sets the slice positions
  * @param slices
  */
-EarthServerGenericClient.Model_VoxelSlice.prototype.setSlices = function (slices) {
+EarthServerGenericClient.Model_VoxelSlice.prototype.setXSlices = function (slices) {
     /**
      * Queried slices.
      * @type {Array}
      */
-    this.slices = slices;
+    this.xSlices = slices;
 
-    this.requests = this.slices.length;
+    this.requests = this.xSlices.length + this.ySlices.length + this.zSlices.length;
+};
+
+EarthServerGenericClient.Model_VoxelSlice.prototype.setYSlices = function (slices) {
+    /**
+     * Queried slices.
+     * @type {Array}
+     */
+    this.ySlices = slices;
+
+    this.requests = this.xSlices.length + this.ySlices.length + this.zSlices.length;
+};
+
+EarthServerGenericClient.Model_VoxelSlice.prototype.setZSlices = function (slices) {
+    /**
+     * Queried slices.
+     * @type {Array}
+     */
+    this.zSlices = slices;
+
+    this.requests = this.xSlices.length + this.ySlices.length + this.zSlices.length;
 };
 
 /**
@@ -7126,7 +7188,7 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
 
     // Check if mandatory values are set
     if( this.coverageVoxel === undefined || this.URLWCPS === undefined ||
-        this.slices === undefined  )
+        (this.xSlices.length === 0 && this.ySlices.length === 0 && this.zSlices.length === 0) )
     {
         alert("Not all mandatory values are set. VoxelSlice: " + this.name );
         console.log(this);
@@ -7134,12 +7196,32 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
     }
 
     //IF something is not defined use standard query.
+    //Not dealing with simultaneous slices in different directions yet.
     if( this.WCPSQuery.length === 0 )
     {
-        for(var i=0; i< this.slices.length;i++)
+        if (this.xSlices.length > 0)
         {
-            this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.slices[i]+ ')),"png", "nodata=0")';
+            for(var i=0; i< this.xSlices.length;i++)
+            {
+                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
+                this.WCPSQuery[i] += "return encode(slice( data, " + this.xAxisLabel + "(" + this.xSlices[i]+ ')),"png" )';
+            }
+        }
+        if (this.ySlices.length > 0)
+        {
+            for(var i=0; i< this.ySlices.length;i++)
+            {
+                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
+                this.WCPSQuery[i] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.ySlices[i]+ ')),"png" )';
+            }
+        }
+        if (this.zSlices.length > 0)
+        {
+            for(var i=0; i< this.zSlices.length;i++)
+            {
+                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
+                this.WCPSQuery[i] += "return encode(slice( data, " + this.zAxisLabel + "(" + this.zSlices[i]+ ')),"png" )';
+            }
         }
     }
     else //ALL set so use custom query
@@ -7169,15 +7251,14 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.receiveData = function( data
     if( failedData == data.length) return;
 
     // create transform
-    // Later if YMinimum and YResolution not set then should check min and max of slice values.
-    YMinimum = this.YMinimum;
-    YResolution = this.YResolution;
-    this.transformNode = this.createTransform(0,YMinimum,0,1,YMinimum + YResolution,1);
+    YMinimum = this.YMinimum || Math.min.apply(Math, this.ySlices);
+    YMaximum = (this.YResolution && YMinimum + this.YResolution) || Math.max.apply(Math, this.ySlices);;
+    this.transformNode = this.createTransform(0,YMinimum,0,1,YMaximum,1);
     this.root.appendChild(this.transformNode);
 
     // create terrain
     EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNode,data,this.slices,this.index,this.noDataValue);
+    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNode,data,this.ySlices,this.index,this.noDataValue);
     EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
 
 };
