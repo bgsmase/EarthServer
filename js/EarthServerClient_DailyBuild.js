@@ -7380,9 +7380,9 @@ EarthServerGenericClient.Model_WCPSDemAlpha.prototype.createModel=function(root,
             var currentXRes = parseInt(this.XResolution / Math.pow(2,i) );
             var currentZRes = parseInt(this.ZResolution / Math.pow(2,i) );
             this.WCPSQuery[i] =  "for i in (" + this.coverageImage + "), dtm in (" + this.coverageDEM + ") return encode ( { ";
-            this.WCPSQuery[i] += 'red: scale(trim(i.red, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {}); ";
-            this.WCPSQuery[i] += 'green: scale(trim(i.green, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {}); ";
-            this.WCPSQuery[i] += 'blue: scale(trim(i.blue, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {});";
+            this.WCPSQuery[i] += 'red: scale(trim(i.0, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {}); ";
+            this.WCPSQuery[i] += 'green: scale(trim(i.1, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {}); ";
+            this.WCPSQuery[i] += 'blue: scale(trim(i.2, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {});";
             this.WCPSQuery[i] += 'alpha: (char) (((scale(trim(dtm , {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {})) / 1349) * 255)";
             this.WCPSQuery[i] += '}, "' + this.imageFormat +'" )';
         }
@@ -7611,10 +7611,8 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.createModel=function(root, c
     //If no query was defined use standard query.
     if( this.WCPSQuery === undefined)
     {
-        this.WCPSQuery =  "for i in (" + this.coverageImage + ") return encode ( { ";
-        this.WCPSQuery += 'red: scale(trim(i.red, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
-        this.WCPSQuery += 'green: scale(trim(i.green, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
-        this.WCPSQuery += 'blue: scale(trim(i.blue, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
+        this.WCPSQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
+        this.WCPSQuery += 'scale(trim(i.red, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}) ";
         this.WCPSQuery += '}, "' + this.imageFormat +'" )';
     }
     else //A custom query was defined so use it
@@ -7800,10 +7798,8 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.createModel=function(root, 
     //If no query was defined use standard query.
     if( this.WCPSImageQuery === undefined)
     {
-        this.WCPSImageQuery =  "for i in (" + this.coverageImage + ") return encode ( { ";
-        this.WCPSImageQuery += 'red: scale(trim(i.red, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
-        this.WCPSImageQuery += 'green: scale(trim(i.green, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
-        this.WCPSImageQuery += 'blue: scale(trim(i.blue, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
+        this.WCPSImageQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
+        this.WCPSImageQuery += 'scale(trim(i, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
         this.WCPSImageQuery += '}, "' + this.imageFormat +'" )';
     }
     else //A custom query was defined so use it
@@ -8210,7 +8206,8 @@ EarthServerGenericClient.Model_WMSDemWCS.prototype.receiveData= function( data)
 EarthServerGenericClient.Model_WMSDemWCS.prototype.setSpecificElement= function(element)
 {
     EarthServerGenericClient.appendElevationSlider(element,this.index);
-};//Namespace
+};
+//Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
 
 /**
