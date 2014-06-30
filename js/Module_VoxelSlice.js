@@ -131,29 +131,23 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
     //Not dealing with simultaneous slices in different directions yet.
     if( this.WCPSQuery.length === 0 )
     {
-        if (this.xSlices.length > 0)
+        var i = 0;
+        for(var j=0; j< this.xSlices.length;j++)
         {
-            for(var i=0; i< this.xSlices.length;i++)
-            {
-                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-                this.WCPSQuery[i] += "return encode(slice( data, " + this.xAxisLabel + "(" + this.xSlices[i]+ ')),"png" )';
-            }
+            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.xAxisLabel + "(" + this.xSlices[j]+ ')),"png" )';
         }
-        if (this.ySlices.length > 0)
+        i = i + j;
+        for(var j=0; j< this.ySlices.length;j++)
         {
-            for(var i=0; i< this.ySlices.length;i++)
-            {
-                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-                this.WCPSQuery[i] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.ySlices[i]+ ')),"png" )';
-            }
+            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.ySlices[j]+ ')),"png" )';
         }
-        if (this.zSlices.length > 0)
+        i = i + j;
+        for(var j=0; j< this.zSlices.length;j++)
         {
-            for(var i=0; i< this.zSlices.length;i++)
-            {
-                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-                this.WCPSQuery[i] += "return encode(slice( data, " + this.zAxisLabel + "(" + this.zSlices[i]+ ')),"png" )';
-            }
+            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.zAxisLabel + "(" + this.zSlices[j]+ ')),"png" )';
         }
     }
     else //ALL set so use custom query
@@ -182,15 +176,29 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.receiveData = function( data
     // if all data failed return
     if( failedData == data.length) return;
 
-    // create transform
+    // create transforms
+    if (this.xSlices.length > 0){
+    XMinimum = this.XMinimum || Math.min.apply(Math, this.xSlices);
+    XMaximum = (this.XResolution && XMinimum + this.XResolution) || Math.max.apply(Math, this.xSlices);;
+    this.transformNodeX = this.createTransform(XMinimum,0,0,XMaximum,1,1);
+    this.root.appendChild(this.transformNodeX);      
+    }
+    if (this.ySlices.length > 0){
     YMinimum = this.YMinimum || Math.min.apply(Math, this.ySlices);
     YMaximum = (this.YResolution && YMinimum + this.YResolution) || Math.max.apply(Math, this.ySlices);;
-    this.transformNode = this.createTransform(0,YMinimum,0,1,YMaximum,1);
-    this.root.appendChild(this.transformNode);
+    this.transformNodeY = this.createTransform(0,YMinimum,0,1,YMaximum,1);
+    this.root.appendChild(this.transformNodeY);      
+    }
+    if (this.zSlices.length > 0){
+    ZMinimum = this.ZMinimum || Math.min.apply(Math, this.zSlices);
+    ZMaximum = (this.ZResolution && ZMinimum + this.ZResolution) || Math.max.apply(Math, this.zSlices);;
+    this.transformNodeZ = this.createTransform(0,0,ZMinimum,1,1,ZMaximum);
+    this.root.appendChild(this.transformNodeZ);      
+    }
 
     // create terrain
     EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNode,data,this.ySlices,this.index,this.noDataValue);
+    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNodeX,this.transformNodeY,this.transformNodeZ,data,this.xSlices,this.ySlices,this.zSlices,this.index,this.noDataValue);
     EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
 
 };

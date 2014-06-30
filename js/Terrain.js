@@ -1132,7 +1132,7 @@ EarthServerGenericClient.VolumeTerrain.inheritsFrom( EarthServerGenericClient.Ab
  * @param noDataValue - No Data Value
  * @constructor
  */
-EarthServerGenericClient.VolumeSliceTerrain = function(root,dataArray,slices,index,noDataValue)
+EarthServerGenericClient.VolumeSliceTerrain = function(rootX,rootY,rootZ,dataArray,xSlices,ySlices,zSlices,index,noDataValue)
 {
     this.materialNodes = [];//Stores the IDs of the materials to change the transparency.
     this.data = dataArray;
@@ -1151,10 +1151,20 @@ EarthServerGenericClient.VolumeSliceTerrain = function(root,dataArray,slices,ind
     }
 
     // create planes with textures
-    for(i=0; i<dataArray.length;i++)
+    var i = 0;
+    for(var j=0; j< xSlices.length;j++)
     {
-        //(root, appearance, shapeNumber, yTranslation)
-        this.createPlaneWithMaterial(root,this.appearances[i][0], i,slices[i], 1);
+        this.createPlaneWithMaterial(rootX,this.appearances[i+j][0], i+j,xSlices[j], 0);
+    }
+    i = i + j;
+    for(var j=0; j< ySlices.length;j++)
+    {
+        this.createPlaneWithMaterial(rootY,this.appearances[i+j][0], i+j,ySlices[j], 1);
+    }
+    i = i + j;
+    for(var j=0; j< zSlices.length;j++)
+    {
+        this.createPlaneWithMaterial(rootZ,this.appearances[i+j][0], i+j,zSlices[j], 2);
     }
 
     /**
