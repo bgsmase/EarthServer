@@ -7103,6 +7103,8 @@ EarthServerGenericClient.Model_VoxelSlice = function()
     this.xSlices = [];
     this.ySlices = [];
     this.zSlices = [];
+
+    this.coverageExpression = 'data';
 };
 EarthServerGenericClient.Model_VoxelSlice.inheritsFrom( EarthServerGenericClient.AbstractSceneModel );
 
@@ -7162,6 +7164,10 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.setZSlices = function (slice
     this.requests = this.xSlices.length + this.ySlices.length + this.zSlices.length;
 };
 
+EarthServerGenericClient.Model_VoxelSlice.prototype.setCoverageExpression = function (expr) {
+    this.coverageExpression = expr;
+}
+
 /**
  * Specify the array of slice queries directly.
  * @param sliceQueries - the array of queries. Use $CI (coverageImage),
@@ -7218,19 +7224,19 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
         for(var j=0; j< this.xSlices.length;j++)
         {
             this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.xAxisLabel + "(" + this.xSlices[j]+ ')),"png", "nodata=0" )';
+            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", " + this.xAxisLabel + "(" + this.xSlices[j]+ ')),"png", "nodata=0" )';
         }
         i = i + j;
         for(var j=0; j< this.ySlices.length;j++)
         {
             this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.ySlices[j]+ ')),"png", "nodata=0" )';
+            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", " + this.yAxisLabel + "(" + this.ySlices[j]+ ')),"png", "nodata=0" )';
         }
         i = i + j;
         for(var j=0; j< this.zSlices.length;j++)
         {
             this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.zAxisLabel + "(" + this.zSlices[j]+ ')),"png", "nodata=0" )';
+            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", " + this.zAxisLabel + "(" + this.zSlices[j]+ ')),"png", "nodata=0" )';
         }
     }
     else //ALL set so use custom query
