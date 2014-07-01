@@ -92,24 +92,28 @@ EarthServerGenericClient.AbstractTerrain = function()
      */
     this.createPlaneWithMaterial = function(root, appearance, shapeNumber, translation, axis)
     {
-        var shape,transform,grid, coordsNode;
+        var shape,transform,grid,coordsNode,tcnode;
 
         // For backwards compatibility assume Y axis if not specified
         if (axis === undefined || axis === null) { axis = 1;}
 
         transform = document.createElement("transform");
         coordsNode = document.createElement('Coordinate');
+        tcnode = document.createElement("TextureCoordinate");
 
         switch (axis)
         {
             case 0: transform.setAttribute("translation", translation +" 0 0");
                     coordsNode.setAttribute("point", "0 0 0 0 1 0 0 1 1 0 0 1");
+                    tcnode.setAttribute("point", "0 1 0 0 1 0 1 1");
                     break;
             case 1: transform.setAttribute("translation","0 "+ translation +" 0");
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
+                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
                     break;
             case 2: transform.setAttribute("translation","0 0 "+ translation);
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 1 0 0 1 0");
+                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
                     break;
         }
 
@@ -123,6 +127,7 @@ EarthServerGenericClient.AbstractTerrain = function()
 
         grid.setAttribute("coordIndex", "0 1 2 3 -1");
         grid.appendChild( coordsNode );
+        grid.appendChild( tcnode);
 
         shape.appendChild(appearance);
         shape.appendChild(grid);
@@ -635,7 +640,7 @@ EarthServerGenericClient.AbstractTerrain = function()
                         texture.appendChild(canvasTexture);
 
                         var imageTransform = document.createElement('TextureTransform');
-                        imageTransform.setAttribute("scale", "1,-1");
+                        imageTransform.setAttribute("scale", "1,1");
                         if(upright)
                         {   imageTransform.setAttribute("rotation", "-1.57");   }
                     }

@@ -3413,14 +3413,14 @@ EarthServerGenericClient.AbstractSceneModel = function(){
          * @default 500
          * @type {Number}
          */
-        this.XResolution = 500;
+        //this.XResolution = 500;
 
         /**
          * Resolution for the longitude
          * @default 500
          * @type {Number}
          */
-        this.ZResolution = 500;
+        //this.ZResolution = 500;
 
         /**
          * Offset on the X-Axis for the model.
@@ -3959,24 +3959,28 @@ EarthServerGenericClient.AbstractTerrain = function()
      */
     this.createPlaneWithMaterial = function(root, appearance, shapeNumber, translation, axis)
     {
-        var shape,transform,grid, coordsNode;
+        var shape,transform,grid,coordsNode,tcnode;
 
         // For backwards compatibility assume Y axis if not specified
         if (axis === undefined || axis === null) { axis = 1;}
 
         transform = document.createElement("transform");
         coordsNode = document.createElement('Coordinate');
+        tcnode = document.createElement("TextureCoordinate");
 
         switch (axis)
         {
             case 0: transform.setAttribute("translation", translation +" 0 0");
                     coordsNode.setAttribute("point", "0 0 0 0 1 0 0 1 1 0 0 1");
+                    tcnode.setAttribute("point", "0 1 0 0 1 0 1 1");
                     break;
             case 1: transform.setAttribute("translation","0 "+ translation +" 0");
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
+                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
                     break;
             case 2: transform.setAttribute("translation","0 0 "+ translation);
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 1 0 0 1 0");
+                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
                     break;
         }
 
@@ -3990,6 +3994,7 @@ EarthServerGenericClient.AbstractTerrain = function()
 
         grid.setAttribute("coordIndex", "0 1 2 3 -1");
         grid.appendChild( coordsNode );
+        grid.appendChild( tcnode);
 
         shape.appendChild(appearance);
         shape.appendChild(grid);
@@ -4502,7 +4507,7 @@ EarthServerGenericClient.AbstractTerrain = function()
                         texture.appendChild(canvasTexture);
 
                         var imageTransform = document.createElement('TextureTransform');
-                        imageTransform.setAttribute("scale", "1,-1");
+                        imageTransform.setAttribute("scale", "1,1");
                         if(upright)
                         {   imageTransform.setAttribute("rotation", "-1.57");   }
                     }
@@ -4999,7 +5004,7 @@ EarthServerGenericClient.VolumeTerrain.inheritsFrom( EarthServerGenericClient.Ab
  * @param noDataValue - No Data Value
  * @constructor
  */
-EarthServerGenericClient.VolumeSliceTerrain = function(root,dataArray,slices,index,noDataValue)
+EarthServerGenericClient.VolumeSliceTerrain = function(rootX,rootY,rootZ,dataArray,xSlices,ySlices,zSlices,index,noDataValue)
 {
     this.materialNodes = [];//Stores the IDs of the materials to change the transparency.
     this.data = dataArray;
@@ -5018,10 +5023,20 @@ EarthServerGenericClient.VolumeSliceTerrain = function(root,dataArray,slices,ind
     }
 
     // create planes with textures
-    for(i=0; i<dataArray.length;i++)
+    var i = 0;
+    for(var j=0; j< xSlices.length;j++)
     {
-        //(root, appearance, shapeNumber, yTranslation)
-        this.createPlaneWithMaterial(root,this.appearances[i][0], i,slices[i], 1);
+        this.createPlaneWithMaterial(rootX,this.appearances[i+j][0], i+j,xSlices[j], 0);
+    }
+    i = i + j;
+    for(var j=0; j< ySlices.length;j++)
+    {
+        this.createPlaneWithMaterial(rootY,this.appearances[i+j][0], i+j,ySlices[j], 1);
+    }
+    i = i + j;
+    for(var j=0; j< zSlices.length;j++)
+    {
+        this.createPlaneWithMaterial(rootZ,this.appearances[i+j][0], i+j,zSlices[j], 2);
     }
 
     /**
@@ -7199,29 +7214,23 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
     //Not dealing with simultaneous slices in different directions yet.
     if( this.WCPSQuery.length === 0 )
     {
-        if (this.xSlices.length > 0)
+        var i = 0;
+        for(var j=0; j< this.xSlices.length;j++)
         {
-            for(var i=0; i< this.xSlices.length;i++)
-            {
-                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-                this.WCPSQuery[i] += "return encode(slice( data, " + this.xAxisLabel + "(" + this.xSlices[i]+ ')),"png" )';
-            }
+            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.xAxisLabel + "(" + this.xSlices[j]+ ')),"png", "nodata=0" )';
         }
-        if (this.ySlices.length > 0)
+        i = i + j;
+        for(var j=0; j< this.ySlices.length;j++)
         {
-            for(var i=0; i< this.ySlices.length;i++)
-            {
-                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-                this.WCPSQuery[i] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.ySlices[i]+ ')),"png" )';
-            }
+            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.yAxisLabel + "(" + this.ySlices[j]+ ')),"png", "nodata=0" )';
         }
-        if (this.zSlices.length > 0)
+        i = i + j;
+        for(var j=0; j< this.zSlices.length;j++)
         {
-            for(var i=0; i< this.zSlices.length;i++)
-            {
-                this.WCPSQuery[i]  = "for data in (" + this.coverageVoxel +")";
-                this.WCPSQuery[i] += "return encode(slice( data, " + this.zAxisLabel + "(" + this.zSlices[i]+ ')),"png" )';
-            }
+            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j] += "return encode(slice( data, " + this.zAxisLabel + "(" + this.zSlices[j]+ ')),"png", "nodata=0" )';
         }
     }
     else //ALL set so use custom query
@@ -7250,15 +7259,29 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.receiveData = function( data
     // if all data failed return
     if( failedData == data.length) return;
 
-    // create transform
+    // create transforms
+    if (this.xSlices.length > 0){
+    XMinimum = this.XMinimum || Math.min.apply(Math, this.xSlices);
+    XMaximum = (this.XResolution && XMinimum + this.XResolution) || Math.max.apply(Math, this.xSlices);;
+    this.transformNodeX = this.createTransform(XMinimum,0,0,XMaximum,1,1);
+    this.root.appendChild(this.transformNodeX);      
+    }
+    if (this.ySlices.length > 0){
     YMinimum = this.YMinimum || Math.min.apply(Math, this.ySlices);
     YMaximum = (this.YResolution && YMinimum + this.YResolution) || Math.max.apply(Math, this.ySlices);;
-    this.transformNode = this.createTransform(0,YMinimum,0,1,YMaximum,1);
-    this.root.appendChild(this.transformNode);
+    this.transformNodeY = this.createTransform(0,YMinimum,0,1,YMaximum,1);
+    this.root.appendChild(this.transformNodeY);      
+    }
+    if (this.zSlices.length > 0){
+    ZMinimum = this.ZMinimum || Math.min.apply(Math, this.zSlices);
+    ZMaximum = (this.ZResolution && ZMinimum + this.ZResolution) || Math.max.apply(Math, this.zSlices);;
+    this.transformNodeZ = this.createTransform(0,0,ZMinimum,1,1,ZMaximum);
+    this.root.appendChild(this.transformNodeZ);      
+    }
 
     // create terrain
     EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNode,data,this.ySlices,this.index,this.noDataValue);
+    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNodeX,this.transformNodeY,this.transformNodeZ,data,this.xSlices,this.ySlices,this.zSlices,this.index,this.noDataValue);
     EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
 
 };

@@ -752,14 +752,14 @@ EarthServerGenericClient.AbstractSceneModel = function(){
          * @default 500
          * @type {Number}
          */
-        this.XResolution = 500;
+        //this.XResolution = 500;
 
         /**
          * Resolution for the longitude
          * @default 500
          * @type {Number}
          */
-        this.ZResolution = 500;
+        //this.ZResolution = 500;
 
         /**
          * Offset on the X-Axis for the model.
