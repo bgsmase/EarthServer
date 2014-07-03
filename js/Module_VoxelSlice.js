@@ -203,7 +203,8 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.receiveData = function( data
     if (this.zSlices.length > 0){
     ZMinimum = this.ZMinimum || Math.min.apply(Math, this.zSlices);
     ZMaximum = (this.ZResolution && ZMinimum + this.ZResolution) || Math.max.apply(Math, this.zSlices);;
-    this.transformNodeZ = this.createTransform(0,0,ZMinimum,1,1,ZMaximum);
+    // Graphics Z axis positive out of screen but geographic y axis positive into it
+    this.transformNodeZ = this.createTransform(0,0,ZMaximum,1,1,ZMinimum);
     this.root.appendChild(this.transformNodeZ);      
     }
 

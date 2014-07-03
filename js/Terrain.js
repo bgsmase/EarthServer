@@ -105,11 +105,11 @@ EarthServerGenericClient.AbstractTerrain = function()
         {
             case 0: transform.setAttribute("translation", translation +" 0 0");
                     coordsNode.setAttribute("point", "0 0 0 0 1 0 0 1 1 0 0 1");
-                    tcnode.setAttribute("point", "0 1 0 0 1 0 1 1");
+                    tcnode.setAttribute("point", "1 1 1 0 0 0 0 1");
                     break;
             case 1: transform.setAttribute("translation","0 "+ translation +" 0");
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
-                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
+                    tcnode.setAttribute("point", "0 0 1 0 1 1 0 1");
                     break;
             case 2: transform.setAttribute("translation","0 0 "+ translation);
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 1 0 0 1 0");

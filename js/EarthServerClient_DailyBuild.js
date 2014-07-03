@@ -3972,11 +3972,11 @@ EarthServerGenericClient.AbstractTerrain = function()
         {
             case 0: transform.setAttribute("translation", translation +" 0 0");
                     coordsNode.setAttribute("point", "0 0 0 0 1 0 0 1 1 0 0 1");
-                    tcnode.setAttribute("point", "0 1 0 0 1 0 1 1");
+                    tcnode.setAttribute("point", "1 1 1 0 0 0 0 1");
                     break;
             case 1: transform.setAttribute("translation","0 "+ translation +" 0");
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 0 1 0 0 1");
-                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
+                    tcnode.setAttribute("point", "0 0 1 0 1 1 0 1");
                     break;
             case 2: transform.setAttribute("translation","0 0 "+ translation);
                     coordsNode.setAttribute("point", "0 0 0 1 0 0 1 1 0 0 1 0");
@@ -7286,7 +7286,8 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.receiveData = function( data
     if (this.zSlices.length > 0){
     ZMinimum = this.ZMinimum || Math.min.apply(Math, this.zSlices);
     ZMaximum = (this.ZResolution && ZMinimum + this.ZResolution) || Math.max.apply(Math, this.zSlices);;
-    this.transformNodeZ = this.createTransform(0,0,ZMinimum,1,1,ZMaximum);
+    // Graphics Z axis positive out of screen but geographic y axis positive into it
+    this.transformNodeZ = this.createTransform(0,0,ZMaximum,1,1,ZMinimum);
     this.root.appendChild(this.transformNodeZ);      
     }
 
