@@ -82,7 +82,7 @@
             //BGS_LOW.setWCPSForChannelRED('scale(trim($CI.red, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
             //BGS_LOW.setWCPSForChannelGREEN('scale(trim($CI.green, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
             //BGS_LOW.setWCPSForChannelBLUE('scale(trim($CI.blue, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
-            //BGS_LOW.setWCPSForChannelALPHA('(char) (((scale(trim($CD , {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY)}), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {})) / 1349) * 255)');
+            //BGS_LOW.setWCPSForChannelALPHA('(unsigned char) (((scale(trim($CD , {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY)}), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {})) / 1349) * 255)');
 
             var Bedrock = new EarthServerGenericClient.Model_WMSDemWCPS();
             Bedrock.setName("Bedrock geology on ground surface");
@@ -120,9 +120,9 @@
             var query = 'for i in ( $CI ) ';
             query += 'return encode( ';
             query += '{ ';
-            query += 'red: (char) 0; ';
-            query += 'green: (char) scale((i != -340282346638528859811704183484516925440.0) * 240, {E:"CRS:1"(0:$RESX), N:"CRS:1"(0:$RESZ)}, {}); ';
-            query += 'blue: (char) 0 ';
+            query += 'red: (unsigned char) 0; ';
+            query += 'green: (unsigned char) scale((i != -340282346638528859811704183484516925440.0) * 240, {E:"CRS:1"(0:$RESX), N:"CRS:1"(0:$RESZ)}, {}); ';
+            query += 'blue: (unsigned char) 0 ';
             query += '} ';
             query += ', "png", "nodata=0,0,0")';
             glasgow_witi_t.setWCPSImageQuery(query);

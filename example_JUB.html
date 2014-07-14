@@ -35,10 +35,10 @@
         JUB.setOffset(0,0.4,0);// model has a 40% offset in height of the cube
         JUB.setTransparency(0);// initial transparency of the model
 
-        var JUB_query = 'for data in ( $CI ) return encode( (char)({';
-        JUB_query += 'red: (char) (255 / (max(((data.100)!=65535) * (data.100)) - min(data.100))) * ((data.100) - min(data.100));';
-        JUB_query += 'green: (char) (255 / (max(((data.200)!=65535) * (data.200)) - min(data.200))) * ((data.200) - min(data.200));';
-        JUB_query += 'blue: (char) (255 / (max(((data.300)!=65535) * (data.300)) - min(data.300))) * ((data.300) - min(data.300))';
+        var JUB_query = 'for data in ( $CI ) return encode( (unsigned char)({';
+        JUB_query += 'red: (unsigned char) (255 / (max(((data.100)!=65535) * (data.100)) - min(data.100))) * ((data.100) - min(data.100));';
+        JUB_query += 'green: (unsigned char) (255 / (max(((data.200)!=65535) * (data.200)) - min(data.200))) * ((data.200) - min(data.200));';
+        JUB_query += 'blue: (unsigned char) (255 / (max(((data.300)!=65535) * (data.300)) - min(data.300))) * ((data.300) - min(data.300))';
         JUB_query += ', "png" )';
         JUB.setWCPSQuery(JUB_query);
 

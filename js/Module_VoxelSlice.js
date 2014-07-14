@@ -146,19 +146,19 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
         for(var j=0; j< this.xSlices.length;j++)
         {
             this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", " + this.xAxisLabel + "(" + this.xSlices[j]+ ')),"png"' + params +' )';
+            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", {" + this.xAxisLabel + "(" + this.xSlices[j]+ ')}),"png"' + params +' )';
         }
         i = i + j;
         for(var j=0; j< this.ySlices.length;j++)
         {
             this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", " + this.yAxisLabel + "(" + this.ySlices[j]+ ')),"png"' + params +' )';
+            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", {" + this.yAxisLabel + "(" + this.ySlices[j]+ ')}),"png"' + params +' )';
         }
         i = i + j;
         for(var j=0; j< this.zSlices.length;j++)
         {
             this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
-            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", " + this.zAxisLabel + "(" + this.zSlices[j]+ ')),"png"' + params +' )';
+            this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", {" + this.zAxisLabel + "(" + this.zSlices[j]+ ')}),"png"' + params +' )';
         }
     }
     else //ALL set so use custom query
