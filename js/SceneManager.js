@@ -155,11 +155,16 @@ EarthServerGenericClient.SceneManager = function()
     var compassColor = "0.8 0.8 0.8";// Color of the compass
     var compassLabel = "N";         // Label for the compass
     var CubeBaseQuery = null;       // A WMS image query for the base of the cube
-    var offSetScaling = 1.0;        // Global scaling of model offset.
     var subsetting = false;          // Enable slicer for seubsetting
     var subsetManager = null;       // Manager for subsetting
     var navigationType = null;      // Type of navigation
     var navigationParams = null;    // Parameters for the navigation type
+    var enableGlobalSeparation=false; // Flag if global separation should be enabled
+    var separationVector = [];   // Vector for model separation
+    separationVector[0] = 1;
+    separationVector[1] = 1;
+    separationVector[2] = 1;
+
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -324,6 +329,15 @@ EarthServerGenericClient.SceneManager = function()
     };
 
     /**
+     * Sets the flag if global separation should be enabled in the UI.
+     * @param value
+     */
+    this.setGlobalSeparationFlag = function( value )
+    {
+        enableGlobalSeparation = value;
+    };
+
+    /**
      * Returns the values of the subsetting slices.
      * Or null if subsetting is disabled.
      * @returns {*}
@@ -372,6 +386,15 @@ EarthServerGenericClient.SceneManager = function()
     this.getSubsettingFlag = function( )
     {
         return subsetting;
+    };
+
+    /**
+     * Returns the flag if global separation is enabled.
+     * @returns {boolean}
+     */
+    this.getGlobalSeparationFlag = function( )
+    {
+        return enableGlobalSeparation;
     };
 
     /**
@@ -959,7 +982,6 @@ EarthServerGenericClient.SceneManager = function()
                 var modelIndex = this.getModelIndex(modelName);
                 if( modelIndex >= 0)
                 {
-                    //layer.setBoundModuleIndex(modelIndex);
                     models[modelIndex].addBinding(layer);
                 }
             }
@@ -1233,7 +1255,6 @@ EarthServerGenericClient.SceneManager = function()
         }
         else // default navagation
         {
-            console.log("noderp");
             navigation.setAttribute("type",'"TURNTABLE" "ANY"');
             navigation.setAttribute("typeParams","-0.4, 60, 0.5, 2.55");
         }
@@ -2124,12 +2145,15 @@ EarthServerGenericClient.SceneManager = function()
             if( models[i].isChildOf !== null)
             {
                 var index = this.getModelIndex(models[i].isChildOf );
-                if( index >= 0)
+                if( index >= 0 && index !== i)
                 {
                     models[index].addBinding( models[i] );
                 }
                 else
-                {   console.log("EarthServerGenericClient:MainScene: Can't find parent with name " + models[i].isChildOf );    }
+                {
+                    console.log("EarthServerGenericClient:MainScene: Can't find parent with name " + models[i].isChildOf );
+                    models[i].isChildOf = undefined;
+                }
             }
         }
     };
@@ -2361,30 +2385,54 @@ EarthServerGenericClient.SceneManager = function()
             var offset=0;
             // the minValue is the scaled minimum value of the data at the given axis
             // some terrains start with 0 at all axis, others do not.
-            // check if the user has set Yminimum first.
-            var minValue = models[modelIndex].YMinimum || EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
+            // If moving in Y direction (axis=1) check if the user has set Yminimum first.
+            var minValue = (which === 1 && models[modelIndex].YMinimum) || EarthServerGenericClient.MainScene.getMinDataValueAtAxis(modelIndex,which);
             var delta = 0;
             var scale    = x3dom.fields.SFVec3f.parse( trans.getAttribute("scale") );
             var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
             var newTrans;
+            var offSetMult;
 
             switch(which)
             {
                 case 0: offset = cubeSizeX/2.0;
                         minValue *= scale.x;
-                        newTrans = (value - offset- minValue) *offSetScaling;
+                        newTrans = (value - offset- minValue);
+
+                        if( models[modelIndex].isChildOf === null )
+                        {
+                            offSetMult = (  2* Math.abs( models[modelIndex].xOffset -0.5 ));
+                            if( offSetMult !== 0.0 )
+                                newTrans *= separationVector[0];
+                        }
+
                         delta = oldTrans.x - newTrans;
                         oldTrans.x = newTrans;
                         break;
+
                 case 1: offset = cubeSizeY/2.0;
                         minValue *= scale.y;
-                        newTrans = (value - offset- minValue) *offSetScaling;
+                        newTrans = (value - offset- minValue);
+
+                        if( models[modelIndex].isChildOf === null )
+                        {
+                            offSetMult = (  2* Math.abs( models[modelIndex].yOffset -0.5 ));
+                            if( offSetMult !== 0.0 )
+                                newTrans *= separationVector[1];
+                        }
+
                         delta = oldTrans.y - newTrans;
                         oldTrans.y = newTrans;
                         break;
+
                 case 2: offset = cubeSizeZ/2.0;
                         minValue *= scale.z;
-                        newTrans = (value - offset- minValue) *offSetScaling;
+                        newTrans = (value - offset- minValue);
+
+                        offSetMult = (  2* Math.abs( models[modelIndex].zOffset -0.5 ));
+                        if( offSetMult !== 0.0 )
+                            newTrans *= separationVector[2];
+
                         delta = oldTrans.z - newTrans;
                         oldTrans.z = newTrans;
                         break;
@@ -2427,6 +2475,79 @@ EarthServerGenericClient.SceneManager = function()
         }
         else
         {   console.log("EarthServerGenericClient::SceneManager: Can't find transformation for model with index " + modelIndex);}
+    };
+
+    /**
+     * Changes the global separation of every model that does not have a parent.
+     * @param axis - Which axis the change effects.
+     * @param value - The new separation value.
+     */
+    this.updateSeparation = function(axis,value)
+    {
+        value /= 10;
+        var currentSliderValue = 1.0;
+        var axisSign = "";
+
+        switch( parseInt(axis) )
+        {
+            case 0: separationVector[0] = parseFloat(value);
+                    axisSign = "X";
+                    break;
+            case 1: separationVector[1] = parseFloat(value);
+                    axisSign = "Y";
+                    break;
+            case 2: separationVector[2] = parseFloat(value);
+                    axisSign = "Z";
+                    break;
+            default: console.log("EarthServerGenericClient::SceneManager::updateSeparation: Axis with value " +value+ " not known."); return;
+        }
+
+
+        for(var i=0; i< models.length; i++)
+        {
+            if( models[i].isChildOf === null )
+            {
+                currentSliderValue = $( "#Model"+i+axisSign ).slider( "value" );
+                EarthServerGenericClient.MainScene.updateOffset(i,axis,currentSliderValue);
+
+                /*var trans = document.getElementById("EarthServerGenericClient_modelTransform"+i);
+
+                if( trans )
+                {
+                    var delta = 0;
+                    var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
+
+                    console.log(oldTrans);
+                    console.log(separationVector);
+
+                    var newTrans;
+
+                    switch( parseInt(axis) )
+                    {
+                        case 0: newTrans = oldTrans.x * separationVector[0];
+                                delta = oldTrans.x - newTrans;
+                                oldTrans.x = newTrans;
+                                break;
+
+                        case 1: newTrans = oldTrans.y * separationVector[1];
+                                delta = oldTrans.y - newTrans;
+                                oldTrans.y = newTrans;
+                                break;
+
+                        case 2: newTrans = oldTrans.z * separationVector[2];
+                                delta = oldTrans.z - newTrans;
+                                oldTrans.z = newTrans;
+                                break;
+                    }
+
+                    console.log(oldTrans);
+
+                    // update translation and call bindings with the delta
+                    trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z );
+                    models[i].movementUpdateBindings(axis,delta);
+                }*/
+            }
+        }
     };
 
     /**

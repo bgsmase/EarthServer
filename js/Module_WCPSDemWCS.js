@@ -108,7 +108,7 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.createModel=function(root, c
     this.createPlaceHolder();
 
     //1: Check if mandatory values are set
-    if( this.coverageImage === undefined || this.coverageDEM === undefined || this.URLWCPS === undefined || this.URLDEM === undefined
+    if( (this.coverageImage === undefined || this.colorOnly) || this.coverageDEM === undefined || (this.URLWCPS === undefined || this.colorOnly ) || this.URLDEM === undefined
         || this.minx === undefined || this.miny === undefined || this.maxx === undefined || this.maxy === undefined || this.CRS === undefined )
     {
         alert("Not all mandatory values are set. WCPSDemWCS: " + this.name );
@@ -118,19 +118,21 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.createModel=function(root, c
 
     //2: create wcps query
     //If no query was defined use standard query.
-    if( this.WCPSQuery === undefined)
+    if( !this.colorOnly )
     {
-        this.WCPSQuery =  "for i in (" + this.coverageImage + ") return encode ( { ";
-        this.WCPSQuery += 'red: scale(trim(i.red, {x:"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + this.XResolution + '), y:"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
-        this.WCPSQuery += 'green: scale(trim(i.green, {x:"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + this.XResolution + '), y:"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
-        this.WCPSQuery += 'blue: scale(trim(i.blue, {x:"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + this.XResolution + '), y:"CRS:1"(0:' + this.ZResolution + ")}, {})";
-        this.WCPSQuery += '}, "' + this.imageFormat +'" )';
-    }
-    else //A custom query was defined so use it
-    {
-        //Replace $ symbols with the actual values
-        this.WCPSQuery = this.replaceSymbolsInString(this.WCPSQuery);
-        console.log(this.WCPSQuery);
+        if( this.WCPSQuery === undefined)
+        {
+            this.WCPSQuery =  "for i in (" + this.coverageImage + ") return encode ( { ";
+            this.WCPSQuery += 'red: scale(trim(i.red, {x:"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + this.XResolution + '), y:"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
+            this.WCPSQuery += 'green: scale(trim(i.green, {x:"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + this.XResolution + '), y:"CRS:1"(0:' + this.ZResolution + ")}, {}); ";
+            this.WCPSQuery += 'blue: scale(trim(i.blue, {x:"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + this.XResolution + '), y:"CRS:1"(0:' + this.ZResolution + ")}, {})";
+            this.WCPSQuery += '}, "' + this.imageFormat +'" )';
+        }
+        else //A custom query was defined so use it
+        {
+            //Replace $ symbols with the actual values
+            this.WCPSQuery = this.replaceSymbolsInString(this.WCPSQuery);
+        }
     }
     //3: Make ServerRequest and receive data.
     var bb = {
@@ -139,7 +141,11 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.createModel=function(root, c
         minLatitude:  this.minx,
         maxLatitude:  this.maxx
     };
-    EarthServerGenericClient.requestWCPSImageWCSDem(this,this.URLWCPS,this.WCPSQuery,this.URLDEM,this.coverageDEM,bb,this.WCSVersion);
+
+    if( this.colorOnly )
+    {}
+    else
+    {   EarthServerGenericClient.requestWCPSImageWCSDem(this,this.URLWCPS,this.WCPSQuery,this.URLDEM,this.coverageDEM,bb,this.WCSVersion);  }
 };
 
 /**
