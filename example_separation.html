@@ -1,0 +1,166 @@
+<!DOCTYPE >
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>Earth Demo</title>
+
+<link rel="stylesheet" type="text/css" href="css/x3dom.css" />
+<link rel="stylesheet" type="text/css" href="css/earthservergenericclient.css" />
+<link rel="stylesheet" type="text/css" href="js-ext/jquery-ui/themes/base/jquery-ui.css">
+
+<!--<script type="text/javascript" src="http://x3dom.org/download/dev/x3dom-full.js"></script>-->
+<script type="text/javascript" src="js-ext/x3dom-full.js"></script>
+
+<script type="text/javascript" src="js-ext/jquery-ui/jquery-1.9.1.js"></script>
+<script type="text/javascript" src="js-ext/jquery-ui/ui/jquery-ui.js"></script>
+
+<script src="js/EarthServerClient_DailyBuild.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+EarthServerGenericClient.MainScene.setGlobalSeparationFlag(true);
+
+EarthServerGenericClient.MainScene.setTimeLog(false);
+EarthServerGenericClient.MainScene.addLightToScene(true);
+EarthServerGenericClient.MainScene.setDrawCube(true);
+EarthServerGenericClient.MainScene.setBackground("0.8 0.8 0.95 0.4 0.5 0.85 0.3 0.5 0.85 0.31 0.52 0.85","0.9 1.5 1.57","0.8 0.8 0.95 0.4 0.5 0.85 0.3 0.5 0.85 0.31 0.52 0.85","0.9 1.5 1.57");
+
+$(document).ready(function()
+{
+    var BGS = new EarthServerGenericClient.Model_WCPSDemWCS();
+    BGS.setName("Satellite image on ground surface");
+    BGS.setURLs("http://earthserver.bgs.ac.uk/petascope", "http://earthserver.bgs.ac.uk/petascope");
+    BGS.setCoverages("glasgow_witi_t", "os_dtm");
+    BGS.setAreaOfInterest(254750.0,659824.9,265250.0,670024.9);
+    BGS.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
+    BGS.setScale(1.0,0.3,1.0);//Size within the cube 100%width, 30%height and 100%length
+    BGS.setResolution(200,300);//Resolution of the model
+    BGS.setTextureNoDataValue(0,0,0);
+    BGS.setDemNoDataValue(0);
+
+
+    var glasgow_witi_t = new EarthServerGenericClient.Model_WCPSDemWCPS();
+    glasgow_witi_t.setName("Wilderness Till Formation (top)");
+    glasgow_witi_t.setURLs("http://earthserver.bgs.ac.uk/petascope", "http://earthserver.bgs.ac.uk/petascope");
+    glasgow_witi_t.setCoverages("glasgow_witi_t", "glasgow_witi_t");
+    glasgow_witi_t.setAreaOfInterest(254750.0,659824.9,265250.0,670024.9);
+    glasgow_witi_t.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
+    glasgow_witi_t.setScale(1.0,0.3,1.0);//Size within the cube 100%width, 30%height and 100%length
+    glasgow_witi_t.setOffset(0, 0.8 , 0);
+    glasgow_witi_t.setResolution(105,102);//Resolution of the model
+    // This value will be considered as NODATA in the DEM. Vertices with that value will not be used and gaps are left.
+    glasgow_witi_t.setDemNoDataValue(0);
+    // The user can set the height of the model manually to make sure multiple models have the same scaling.
+    // Per default this value will be determined by the difference between the dems's min and max values.
+    glasgow_witi_t.setHeightResolution(100);
+    var query = 'for i in ( $CI ) ';
+    query += 'return encode( ';
+    query += '{ ';
+    query += 'red: (char) 0; ';
+    query += 'green: (char) scale((i != -340282346638528859811704183484516925440.0) * 240, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}); ';
+    query += 'blue: (char) 0 ';
+    query += '} ';
+    query += ', "png", "nodata=0,0,0")';
+    glasgow_witi_t.setWCPSImageQuery(query);
+    demquery = 'for i in ( glasgow_witi_t ) ';
+    demquery += 'return encode( ';
+    demquery += ' scale((i != -340282346638528859811704183484516925440.0) * i, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}) ';
+    demquery += ', "csv" )';
+    glasgow_witi_t.setWCPSDemQuery(demquery);
+
+
+    var glasgow_pais_t = new EarthServerGenericClient.Model_WCPSDemWCPS();
+    glasgow_pais_t.setName("Paisley Clay Member (top)");
+    glasgow_pais_t.setURLs("http://earthserver.bgs.ac.uk/petascope", "http://earthserver.bgs.ac.uk/petascope");
+    glasgow_pais_t.setCoverages("glasgow_pais_t", "glasgow_pais_t");
+    glasgow_pais_t.setAreaOfInterest(254750.0,659824.9,265250.0,670024.9);
+    glasgow_pais_t.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
+    glasgow_pais_t.setScale(1.0,0.3,1.0);//Size within the cube 100%width, 30%height and 100%length
+    glasgow_pais_t.setOffset(0,0.2,0);
+    glasgow_pais_t.setResolution(105,102);//Resolution of the model
+    glasgow_pais_t.setDemNoDataValue(0);
+    glasgow_pais_t.setColorOnly(true);
+    glasgow_pais_t.setDiffuseColor("1.0 0 0");
+    glasgow_pais_t.addAsChildOf("Wilderness Till Formation (top)");
+
+    var demquery = 'for i in ( glasgow_pais_t ) ';
+    demquery += 'return encode( ';
+    demquery += ' scale((i != -340282346638528859811704183484516925440.0) * i, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}) ';
+    demquery += ', "csv" )';
+    glasgow_pais_t.setWCPSDemQuery(demquery);
+
+    var query = 'for i in ( $CI ) ';
+    query += 'return encode( ';
+    query += '{ ';
+    query += 'red: (char) 0; ';
+    query += 'green: (char) scale((i != -340282346638528859811704183484516925440.0) * 240, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}); ';
+    query += 'blue: (char) 0 ';
+    query += '} ';
+    query += ', "png", "nodata=0,0,0")';
+    BGS.setWCPSQuery(query);
+
+
+    var BGS_LOW = new EarthServerGenericClient.Model_WCPSDemAlpha();
+    BGS_LOW.setName("BGS Low Resolution");
+    BGS_LOW.setURL("http://earthserver.bgs.ac.uk/petascope");
+    BGS_LOW.setCoverages("bgs_rs", "os_dtm");
+    BGS_LOW.setAreaOfInterest(400000,500000,450000,550000);
+    BGS_LOW.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
+    BGS_LOW.setScale(1.0,0.2,1.0);
+    BGS_LOW.setOffset(0,0.5,0);
+    BGS_LOW.setResolution(500,300);
+    BGS_LOW.setWCPSForChannelRED('scale(trim($CI.red, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
+    BGS_LOW.setWCPSForChannelGREEN('scale(trim($CI.green, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
+    BGS_LOW.setWCPSForChannelBLUE('scale(trim($CI.blue, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
+    BGS_LOW.setWCPSForChannelALPHA('(char) (((scale(trim(dtm , {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY)}), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {})) / 1349) * 255)');
+
+
+    EarthServerGenericClient.MainScene.addModel(glasgow_pais_t);
+    EarthServerGenericClient.MainScene.addModel(glasgow_witi_t);
+    EarthServerGenericClient.MainScene.addModel(BGS);
+    EarthServerGenericClient.MainScene.addModel(BGS_LOW);
+
+
+    EarthServerGenericClient.MainScene.createScene('x3dScene','scene',1,0.8,1 );
+    EarthServerGenericClient.MainScene.createAxisLabels("Latitude","Height","Longitude");
+});
+
+document.onload = function()
+{
+    var pb = new EarthServerGenericClient.createProgressBar("progressbar");
+    EarthServerGenericClient.MainScene.setProgressCallback(pb.updateValue);
+    pb = null;
+
+    EarthServerGenericClient.MainScene.createModels();
+    EarthServerGenericClient.MainScene.createUI('x3domUI');
+};
+
+</script>
+
+</head>
+<body id="body">
+
+
+
+<div id="x3dom">
+    <div id="progressbar"></div>
+    <X3D id="x3d" showlog="false" showstat="false">
+        <scene id="x3dScene">
+            <group id="root">
+                <group id="scene" DEF='theScene'></group>
+            </group>
+        </scene>
+    </X3D>
+
+    <div id='x3domUI'></div>
+    <div id="x3domMenuButton">
+        <button id="button" onclick="EarthServerGenericClient.toggleMenu('x3domUI');">Menu</button>
+    </div>
+
+
+</div>
+
+
+
+</body>
+</html>

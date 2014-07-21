@@ -121,16 +121,19 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.createModel=function(root, 
 
     //2: create wcps queries
     //If no query was defined use standard query.
-    if( this.WCPSImageQuery === undefined)
+    if( !this.colorOnly )
     {
-        this.WCPSImageQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
-        this.WCPSImageQuery += 'scale(trim(i, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
-        this.WCPSImageQuery += '}, "' + this.imageFormat +'" )';
-    }
-    else //A custom query was defined so use it
-    {
-        //Replace $ symbols with the actual values
-        this.WCPSImageQuery = this.replaceSymbolsInString(this.WCPSImageQuery);
+        if( this.WCPSImageQuery === undefined )
+        {
+            this.WCPSImageQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
+            this.WCPSImageQuery += 'scale(trim(i, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
+            this.WCPSImageQuery += '}, "' + this.imageFormat +'" )';
+        }
+        else //A custom query was defined so use it
+        {
+            //Replace $ symbols with the actual values
+            this.WCPSImageQuery = this.replaceSymbolsInString(this.WCPSImageQuery);
+        }
     }
 
     if( this.WCPSDemQuery === undefined)
@@ -147,7 +150,10 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.createModel=function(root, 
         this.WCPSDemQuery = this.replaceSymbolsInString(this.WCPSDemQuery);
     }
 
-    EarthServerGenericClient.requestWCPSImageWCPSDem(this,this.imageURL,this.WCPSImageQuery,this.demURL,this.WCPSDemQuery);
+    if( this.colorOnly )
+    {   EarthServerGenericClient.requestWCPSDem(this, this.demURL, this.WCPSDemQuery); }
+    else
+    {   EarthServerGenericClient.requestWCPSImageWCPSDem(this,this.imageURL,this.WCPSImageQuery,this.demURL,this.WCPSDemQuery); }
 };
 
 /**

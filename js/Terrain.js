@@ -374,13 +374,9 @@ EarthServerGenericClient.AbstractTerrain = function()
         if(this.data.texture === undefined) return;
         if( !imageLinks)
         {
-            console.log("Setting imageLinks to null");
             imageLinks = [null,null,null,null];
         }
-        else
-        {
-            console.log("Using ImageLinks");
-        }
+
 
         var modelScale = domElement.getAttribute("scale");
         modelScale = modelScale.split(" ");
