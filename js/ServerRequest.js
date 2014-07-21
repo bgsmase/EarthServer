@@ -492,8 +492,6 @@ EarthServerGenericClient.getCoverageWCS = function(callback,responseData,WCSurl,
                 responseData.height = sizeX;
                 responseData.width  = sizeY;
 
-                console.log(sizeX,sizeY);
-
                 var hm = new Array(sizeX);
                 for(var index=0; index<hm.length; index++)
                 {
@@ -648,6 +646,22 @@ EarthServerGenericClient.requestWCPSImageWCSDem = function(callback,WCPSurl,WCPS
 };
 
 /**
+ * Requests a dem via WCS.
+ * @param callback - Module requesting this data.
+ * @param WCSurl - URL of the WCS service.
+ * @param WCScoverID - Coverage ID for the WCS height data.
+ * @param WCSBoundingBox - Bounding box of the area used in WCS.
+ * @param WCSVersion - Version of the used WCS.
+ */
+EarthServerGenericClient.requestWCSDem = function( callback, WCSurl,WCScoverID,WCSBoundingBox,WCSVersion )
+{
+    var responseData = new EarthServerGenericClient.ServerResponseData();
+    var combine = new EarthServerGenericClient.combinedCallBack(callback,1);
+
+    EarthServerGenericClient.getCoverageWCS(combine,responseData,WCSurl,WCScoverID,WCSBoundingBox,WCSVersion);
+};
+
+/**
  * Requests one Image and one DEM bot via WCPS. The Image and DEM can be requested from
  * different service endpoints.
  * @param callback - Module requesting this data.
@@ -663,6 +677,15 @@ EarthServerGenericClient.requestWCPSImageWCPSDem = function(callback,imageURL,im
 
     EarthServerGenericClient.getWCPSImage(combine,responseData,imageURL,imageQuery,false);
     EarthServerGenericClient.getWCPSDemCoverage(combine,responseData,demURL,demQuery);
+};
+
+EarthServerGenericClient.requestWCPSDem = function( callback, demURL,demQuery )
+{
+    var responseData = new EarthServerGenericClient.ServerResponseData();
+    var combine = new EarthServerGenericClient.combinedCallBack(callback,1);
+
+    EarthServerGenericClient.getWCPSDemCoverage(combine,responseData,demURL,demQuery);
+
 };
 
 /**

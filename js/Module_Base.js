@@ -858,7 +858,7 @@ EarthServerGenericClient.AbstractSceneModel = function(){
 
         /**
          * Stores the name of the parent node.
-         * @type {null}
+         * @type {String}
          */
         this.isChildOf = null;
 

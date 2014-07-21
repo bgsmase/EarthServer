@@ -1,6 +1,8 @@
 //Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
 
+EarthServerGenericClient.UIHidden = false;
+
 /**
  * Creates the basic UI
  * @param domElementID - Dom element to append the UI to.
@@ -77,26 +79,6 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
 
     cdiv=null;
     cp=null;
-
-    //Create Div Reset
-    /*var reset = document.createElement("h3");
-    reset.innerHTML = "Reset";
-    var rdiv = document.createElement("div");
-    var rp   = document.createElement("p");
-
-    var rbutton = document.createElement('button');
-    rbutton.setAttribute("onclick", "EarthServerGenericClient.MainScene.resetScene();return false;");
-    rbutton.innerHTML = "RESET";
-
-   rp.appendChild(rbutton);
-   rbutton = null;
-
-    rdiv.appendChild(rp);
-    UI_DIV.appendChild(reset);
-    UI_DIV.appendChild(rdiv);
-
-    rdiv=null;
-    rp=null;*/
 
     //Create Divs for a Light sources
     for(i=0; i<EarthServerGenericClient.MainScene.getLightCount();i++)
@@ -182,6 +164,35 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
         ap=null;
     }
 
+    if(  EarthServerGenericClient.MainScene.getGlobalSeparationFlag() )
+    {
+        var separationName = document.createElement("h3");
+        separationName.innerHTML = "Global Separation";
+        var separationDiv = document.createElement("div");
+        //Set IDs
+        separationName.setAttribute("id","EarthServerGenericClient_Sep_HEADER");
+        separationDiv.setAttribute("id","EarthServerGenericClient_Sep_Div");
+
+        UI_DIV.appendChild(separationName);
+        UI_DIV.appendChild(separationDiv);
+
+        /*
+         Note about the sliders: The cube is using X and Z axis is base and Y as height.
+         While this is standard in computer graphics it can confuse users.
+         Because of this the labels on Y and Z are switched.
+         */
+
+
+        EarthServerGenericClient.appendGenericSlider(separationDiv,"EarthServerGenericClient_SEPARATION_SLIDER_X","X",0,1.0,50.0,10.0, EarthServerGenericClient.MainScene.updateSeparation);
+        EarthServerGenericClient.appendGenericSlider(separationDiv,"EarthServerGenericClient_SEPARATION_SLIDER_Z","Y",2,1.0,50.0,10.0, EarthServerGenericClient.MainScene.updateSeparation);
+        EarthServerGenericClient.appendGenericSlider(separationDiv,"EarthServerGenericClient_SEPARATION_SLIDER_Y","Z",1,1.0,50.0,10.0, EarthServerGenericClient.MainScene.updateSeparation);
+
+
+
+        separationName=null;
+        separationDiv=null;
+    }
+
     if( EarthServerGenericClient.MainScene.getSubsettingFlag())
     {
         var Sname = document.createElement("h3");
@@ -234,6 +245,24 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
 
     UI_DIV = null;
 };
+
+EarthServerGenericClient.toggleMenu = function(domElementID)
+{
+
+    if( EarthServerGenericClient.UIHidden )
+    {
+        $( "#"+domElementID ).removeAttr( "style" ).hide().fadeIn();
+        EarthServerGenericClient.UIHidden = false;
+    }
+    else
+    {
+        var options = {};
+        $( "#"+domElementID ).hide( "blind", options );
+        EarthServerGenericClient.UIHidden = true;
+    }
+
+};
+
 
 /**
  * Destroys the basic UI.
