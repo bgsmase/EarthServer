@@ -137,7 +137,7 @@ EarthServerGenericClient.Model_WMSDemWCPS.prototype.createModel=function(root, c
         var currentXRes = this.XResolution;
         var currentZRes = this.ZResolution;
         this.WCPSDemQuery =  "for dtm in (" + this.coverageDEM + ") return encode (";
-        this.WCPSDemQuery += 'scale(trim(dtm , {x:"' + this.WCPSCRS + '"(' + this.minx + ":" +  this.maxx + '), y:"' + this.WCPSCRS + '"(' + this.miny + ":" + this.maxy + ') }), {x:"CRS:1"(0:' + currentXRes + '), y:"CRS:1"(0:' + currentZRes + ")}, {})";
+        this.WCPSDemQuery += 'scale(trim(dtm , {' + this.xAxisLabel + ':"' + this.WCPSCRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.WCPSCRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {})";
         this.WCPSDemQuery += ', "csv" )';
     }
     else //A custom query was defined so use it

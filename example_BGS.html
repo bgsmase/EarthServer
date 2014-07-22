@@ -47,11 +47,17 @@
         // create the models:
         $(document).ready(function()
         {
+            // Using v9 server need to set axis labels
             var BGS = new EarthServerGenericClient.Model_WCPSDemWCPS();
             BGS.setName("BGS 2x WCPS");
-            BGS.setURLs("http://earthserver.bgs.ac.uk/petascope");
+            BGS.setURLs("http://earthserver.bgs.ac.uk/rasdaman/ows");
             BGS.setCoverages("bgs_rs", "os_dtm");
             BGS.setAreaOfInterest(400000,500000,450000,550000);
+            //X and Z axis labels will default to 'x' and 'y' if not set
+            //This was the default with rasdaman v8 but with v9 the labels 
+            //depend on the coverage's coordinate reference system.
+            BGS.setXAxisLabel("E");
+            BGS.setZAxisLabel("N");
             BGS.setResolution(500,500);
             BGS.setOffset(0,0.2,0);
             BGS.setScale(1,0.3,1);
@@ -60,23 +66,31 @@
 
             var BGS_LOW = new EarthServerGenericClient.Model_WCPSDemAlpha();
             BGS_LOW.setName("BGS Low Resolution");
-            BGS_LOW.setURL("http://earthserver.bgs.ac.uk/petascope");
+            BGS_LOW.setURL("http://earthserver.bgs.ac.uk/rasdaman/ows");
             BGS_LOW.setCoverages("bgs_rs", "os_dtm");// can be referenced as "$CI" and "$CD" in the WCPS Query
             BGS_LOW.setAreaOfInterest(400000,500000,450000,550000);
+            BGS_LOW.setXAxisLabel("E");
+            BGS_LOW.setZAxisLabel("N");
             BGS_LOW.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
             BGS_LOW.setScale(1.0,0.2,1.0);
             BGS_LOW.setOffset(0,0.8,0);
             BGS_LOW.setResolution(200,200);
-            BGS_LOW.setWCPSForChannelRED('scale(trim($CI.red, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
-            BGS_LOW.setWCPSForChannelGREEN('scale(trim($CI.green, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
-            BGS_LOW.setWCPSForChannelBLUE('scale(trim($CI.blue, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
-            BGS_LOW.setWCPSForChannelALPHA('(char) (((scale(trim($CD , {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY)}), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {})) / 1349) * 255)');
+            //If you set a custom query using the setWCPSFor... methods you must
+            //hard code the axis labels as there currently aren't $ variables that
+            //will get replaced by the model values you may have set with 
+            //setXAxisLabel...
+            //BGS_LOW.setWCPSForChannelRED('scale(trim($CI.red, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
+            //BGS_LOW.setWCPSForChannelGREEN('scale(trim($CI.green, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
+            //BGS_LOW.setWCPSForChannelBLUE('scale(trim($CI.blue, {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY) }), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {});');
+            //BGS_LOW.setWCPSForChannelALPHA('(char) (((scale(trim($CD , {x:$CRS($MINX:$MAXX), y:$CRS($MINY:$MAXY)}), {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {})) / 1349) * 255)');
 
             var Bedrock = new EarthServerGenericClient.Model_WMSDemWCPS();
             Bedrock.setName("Bedrock geology on ground surface");
-            Bedrock.setURLs("http://ogc.bgs.ac.uk/cgi-bin/BGS_Bedrock_and_Superficial_Geology/wms", "http://earthserver.bgs.ac.uk/petascope");
+            Bedrock.setURLs("http://ogc.bgs.ac.uk/cgi-bin/BGS_Bedrock_and_Superficial_Geology/wms", "http://earthserver.bgs.ac.uk/rasdaman/ows");
             Bedrock.setCoverages("GBR_BGS_625k_BLS", "os_dtm");
             Bedrock.setAreaOfInterest(254750.0,659824.9,265250.0,670024.9);
+            Bedrock.setXAxisLabel("E");
+            Bedrock.setZAxisLabel("N");
             Bedrock.setWMSCoordinateReferenceSystem("CRS","EPSG:27700");
             Bedrock.setWCPSCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
             Bedrock.setScale(1.0,0.3,1.0);// Size within the cube 100%width, 30%height and 100%length
@@ -86,9 +100,14 @@
 
             var glasgow_witi_t = new EarthServerGenericClient.Model_WCPSDemWCPS();
             glasgow_witi_t.setName("Wilderness Till Formation");
-            glasgow_witi_t.setURLs("http://earthserver.bgs.ac.uk/petascope", "http://earthserver.bgs.ac.uk/petascope");
+            glasgow_witi_t.setURLs("http://earthserver.bgs.ac.uk/rasdaman/ows", "http://earthserver.bgs.ac.uk/rasdaman/ows");
             glasgow_witi_t.setCoverages("glasgow_witi_t", "glasgow_witi_t");
             glasgow_witi_t.setAreaOfInterest(254750.0,659824.9,265250.0,670024.9);
+            //Setting the axis labels below currently has no effect as we are 
+            //using a custom query and there are no substitution variables for
+            //axis labels.
+            glasgow_witi_t.setXAxisLabel("E");
+            glasgow_witi_t.setZAxisLabel("N");
             glasgow_witi_t.setCoordinateReferenceSystem("http://www.opengis.net/def/crs/EPSG/0/27700");
             glasgow_witi_t.setScale(1.0,0.3,1.0);// Size within the cube 100%width, 30%height and 100%length
             glasgow_witi_t.setOffset(0,0.4,0);
@@ -102,14 +121,14 @@
             query += 'return encode( ';
             query += '{ ';
             query += 'red: (char) 0; ';
-            query += 'green: (char) scale((i != -340282346638528859811704183484516925440.0) * 240, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}); ';
+            query += 'green: (char) scale((i != -340282346638528859811704183484516925440.0) * 240, {E:"CRS:1"(0:$RESX), N:"CRS:1"(0:$RESZ)}, {}); ';
             query += 'blue: (char) 0 ';
             query += '} ';
             query += ', "png", "nodata=0,0,0")';
             glasgow_witi_t.setWCPSImageQuery(query);
             demquery = 'for i in ( glasgow_witi_t ) ';
             demquery += 'return encode( ';
-            demquery += ' scale((i != -340282346638528859811704183484516925440.0) * i, {x:"CRS:1"(0:$RESX), y:"CRS:1"(0:$RESZ)}, {}) ';
+            demquery += ' scale((i != -340282346638528859811704183484516925440.0) * i, {E:"CRS:1"(0:$RESX), N:"CRS:1"(0:$RESZ)}, {}) ';
             demquery += ', "csv" )';
             glasgow_witi_t.setWCPSDemQuery(demquery);
 

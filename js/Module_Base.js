@@ -56,6 +56,30 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
+     * Set the axis label to be used for the X axis in WCS and WCPS queries 
+     */
+    this.setXAxisLabel = function( label )
+    {
+        this.xAxisLabel = label;
+    };
+
+    /**
+     * Set the axis label to be used for the Y axis in WCS and WCPS queries 
+     */
+    this.setYAxisLabel = function( label )
+    {
+        this.yAxisLabel = label;
+    };
+
+    /**
+     * Set the axis label to be used for the Z axis in WCS and WCPS queries 
+     */
+    this.setZAxisLabel = function( label )
+    {
+        this.zAxisLabel = label;
+    };
+
+    /**
      * Sets the height resolution of the model. This effects the scaling of the elevation of the model.
      * The parameter should be the difference between the smallest and biggest value of the DEM.
      * Setting the same value for this and setHeightMinimum for all models puts them on the same scale.
@@ -678,6 +702,14 @@ EarthServerGenericClient.AbstractSceneModel = function(){
          * @type {Array}
          */
         this.bindings = [];
+
+        /**
+         * Default axis labels if not set explicitly (values used by rasdaman before v9)
+         * (Not quite sure about 'Height'
+         */
+        this.xAxisLabel = 'x';
+        this.yAxisLabel = 'Height';
+        this.zAxisLabel = 'y';
 
         /**
          * Resolution for the latitude.
