@@ -111,7 +111,7 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.createModel=function(root, 
     this.createPlaceHolder();
 
     //1: Check if mandatory values are set
-    if( this.coverageImage === undefined || this.coverageDEM === undefined || this.imageURL === undefined || this.demURL === undefined
+    if( (this.coverageImage === undefined && !this.colorOnly ) || this.coverageDEM === undefined || (this.imageURL === undefined && !this.colorOnly )|| this.demURL === undefined
         || this.minx === undefined || this.miny === undefined || this.maxx === undefined || this.maxy === undefined || this.CRS === undefined )
     {
         alert("Not all mandatory values are set. WCPSDemWCPS: " + this.name );
