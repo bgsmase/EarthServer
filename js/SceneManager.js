@@ -164,6 +164,7 @@ EarthServerGenericClient.SceneManager = function()
     separationVector[0] = 1;
     separationVector[1] = 1;
     separationVector[2] = 1;
+    var minDataValue = [];          // Array with the minum data value for each axis
 
 
     // Default cube sizes
@@ -2402,8 +2403,8 @@ EarthServerGenericClient.SceneManager = function()
                         if( models[modelIndex].isChildOf === null )
                         {
                             offSetMult = (  2* Math.abs( models[modelIndex].xOffset -0.5 ));
-                            if( offSetMult !== 0.0 )
-                                newTrans *= separationVector[0];
+                            if( offSetMult !== 0.0 && separationVector[0] !== 1 )
+                                newTrans *= separationVector[0] * this.getSeparationMultiplierForModel(modelIndex,which);
                         }
 
                         delta = oldTrans.x - newTrans;
@@ -2417,8 +2418,8 @@ EarthServerGenericClient.SceneManager = function()
                         if( models[modelIndex].isChildOf === null )
                         {
                             offSetMult = (  2* Math.abs( models[modelIndex].yOffset -0.5 ));
-                            if( offSetMult !== 0.0 )
-                                newTrans *= separationVector[1];
+                            if( offSetMult !== 0.0 && separationVector[1] !== 1 )
+                                newTrans *= separationVector[1] * this.getSeparationMultiplierForModel(modelIndex,which);
                         }
 
                         delta = oldTrans.y - newTrans;
@@ -2430,8 +2431,8 @@ EarthServerGenericClient.SceneManager = function()
                         newTrans = (value - offset- minValue);
 
                         offSetMult = (  2* Math.abs( models[modelIndex].zOffset -0.5 ));
-                        if( offSetMult !== 0.0 )
-                            newTrans *= separationVector[2];
+                        if( offSetMult !== 0.0 && separationVector[2] !== 1 )
+                            newTrans *= separationVector[2] * this.getSeparationMultiplierForModel(modelIndex,which);
 
                         delta = oldTrans.z - newTrans;
                         oldTrans.z = newTrans;
@@ -2509,44 +2510,65 @@ EarthServerGenericClient.SceneManager = function()
             {
                 currentSliderValue = $( "#Model"+i+axisSign ).slider( "value" );
                 EarthServerGenericClient.MainScene.updateOffset(i,axis,currentSliderValue);
-
-                /*var trans = document.getElementById("EarthServerGenericClient_modelTransform"+i);
-
-                if( trans )
-                {
-                    var delta = 0;
-                    var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
-
-                    console.log(oldTrans);
-                    console.log(separationVector);
-
-                    var newTrans;
-
-                    switch( parseInt(axis) )
-                    {
-                        case 0: newTrans = oldTrans.x * separationVector[0];
-                                delta = oldTrans.x - newTrans;
-                                oldTrans.x = newTrans;
-                                break;
-
-                        case 1: newTrans = oldTrans.y * separationVector[1];
-                                delta = oldTrans.y - newTrans;
-                                oldTrans.y = newTrans;
-                                break;
-
-                        case 2: newTrans = oldTrans.z * separationVector[2];
-                                delta = oldTrans.z - newTrans;
-                                oldTrans.z = newTrans;
-                                break;
-                    }
-
-                    console.log(oldTrans);
-
-                    // update translation and call bindings with the delta
-                    trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z );
-                    models[i].movementUpdateBindings(axis,delta);
-                }*/
             }
+        }
+    };
+
+    /**
+     * Returns the minimum data value for the given axis.
+     * @param axis
+     * @returns {*}
+     */
+    this.getMinimumDataValueForAxis = function(axis)
+    {
+        var values = {};
+        values.min = 0;
+        values.max = 1;
+
+        if( models.length === 0) return values;
+
+        if( minDataValue[axis] === undefined)
+        {
+            values.min = models[0].getMinDataValueAtAxis(axis);
+            values.max = values.min;
+
+            for(var i=1; i< models.length; i++)
+            {
+                if( values.min > models[i].getMinDataValueAtAxis(axis) )
+                    values.min = models[i].getMinDataValueAtAxis(axis);
+
+                if( values.max < models[i].getMinDataValueAtAxis(axis) )
+                    values.max = models[i].getMinDataValueAtAxis(axis);
+
+            }
+
+            minDataValue[axis] = values;
+        }
+
+        return  minDataValue[axis];
+    };
+
+
+
+    /**
+     * Return the separation multiplier for the given model and axis.
+     * @param modelIndex - Index of the model.
+     * @param axis - Axis.
+     * @returns {number}
+     */
+    this.getSeparationMultiplierForModel = function(modelIndex,axis)
+    {
+        var minModelValue = this.getMinDataValueAtAxis(modelIndex,axis);
+        var axisValues    = this.getMinimumDataValueForAxis(axis);
+
+        var value = 1;
+
+        if( axisValues.min === axisValues.max )
+        {   return value;   }
+        else
+        {
+            value += ( minModelValue - axisValues.min ) / ( axisValues.max - axisValues.min );
+            return value;
         }
     };
 

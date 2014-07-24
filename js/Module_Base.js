@@ -236,7 +236,16 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     this.getMinDataValueAtAxis = function(axis)
     {
         if( this.terrain)
-            return this.terrain.getMinDataValueAtAxis( axis);
+        {
+            // check if value needs to be set
+            if( this.minDataValue[axis] === undefined )
+            {
+                this.minDataValue[axis] = this.terrain.getMinDataValueAtAxis( axis);
+            }
+
+            return this.minDataValue[axis];
+        }
+
         else
         {
             console.log("EarthServerGenericClient::Module_Base::getMinDataValueAtAxis(): this.terrain is not defined");
@@ -831,5 +840,13 @@ EarthServerGenericClient.AbstractSceneModel = function(){
          * @type {boolean}
          */
         this.updateLock = false;
+
+        /**
+         * Stores the minimum data values for each axis.
+         * The array is empty at start and will be filled when the value is queries via getMinDataValueAtAis().
+         * @type {Array}
+         */
+        this.minDataValue = [];
+
     };
 };
