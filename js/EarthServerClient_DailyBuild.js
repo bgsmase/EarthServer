@@ -2393,6 +2393,9 @@ EarthServerGenericClient.SceneManager = function()
             var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
             var newTrans;
             var offSetMult;
+            var cubeMult;
+
+            // TODO: clean up....
 
             switch(which)
             {
@@ -2403,8 +2406,15 @@ EarthServerGenericClient.SceneManager = function()
                         if( models[modelIndex].isChildOf === null )
                         {
                             offSetMult = (  2* Math.abs( models[modelIndex].xOffset -0.5 ));
-                            if( offSetMult !== 0.0 && separationVector[0] !== 1 )
-                                newTrans *= separationVector[0] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            cubeMult   = cubeSizeX / 10;
+
+                            if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                            {
+                                if( newTrans >= 0)
+                                    newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                                else
+                                    newTrans -= cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            }
                         }
 
                         delta = oldTrans.x - newTrans;
@@ -2418,8 +2428,15 @@ EarthServerGenericClient.SceneManager = function()
                         if( models[modelIndex].isChildOf === null )
                         {
                             offSetMult = (  2* Math.abs( models[modelIndex].yOffset -0.5 ));
-                            if( offSetMult !== 0.0 && separationVector[1] !== 1 )
-                                newTrans *= separationVector[1] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            cubeMult   = cubeSizeY / 10;
+
+                            if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                            {
+                                if( newTrans >= 0)
+                                    newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                                else
+                                    newTrans -= cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            }
                         }
 
                         delta = oldTrans.y - newTrans;
@@ -2431,8 +2448,15 @@ EarthServerGenericClient.SceneManager = function()
                         newTrans = (value - offset- minValue);
 
                         offSetMult = (  2* Math.abs( models[modelIndex].zOffset -0.5 ));
-                        if( offSetMult !== 0.0 && separationVector[2] !== 1 )
-                            newTrans *= separationVector[2] * this.getSeparationMultiplierForModel(modelIndex,which);
+                        cubeMult   = cubeSizeZ / 10;
+
+                        if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                        {
+                            if( newTrans >= 0)
+                                newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            else
+                                newTrans -= cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                        }
 
                         delta = oldTrans.z - newTrans;
                         oldTrans.z = newTrans;
@@ -2486,7 +2510,6 @@ EarthServerGenericClient.SceneManager = function()
     this.updateSeparation = function(axis,value)
     {
         value /= 10;
-        var currentSliderValue = 1.0;
         var axisSign = "";
 
         switch( parseInt(axis) )
@@ -2503,12 +2526,17 @@ EarthServerGenericClient.SceneManager = function()
             default: console.log("EarthServerGenericClient::SceneManager::updateSeparation: Axis with value " +value+ " not known."); return;
         }
 
-
         for(var i=0; i< models.length; i++)
         {
             if( models[i].isChildOf === null )
             {
-                currentSliderValue = $( "#Model"+i+axisSign ).slider( "value" );
+                // Set slider value to default value
+                var currentSliderValue = EarthServerGenericClient.MainScene.getModelOffsetZ(i) * EarthServerGenericClient.MainScene.getCubeSizeZ();
+                var slider = document.getElementById("Model"+i+axisSign);
+
+                if(slider)
+                    currentSliderValue = $( "#Model"+i+axisSign ).slider( "value" );
+
                 EarthServerGenericClient.MainScene.updateOffset(i,axis,currentSliderValue);
             }
         }
