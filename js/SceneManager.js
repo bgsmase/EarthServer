@@ -154,7 +154,8 @@ EarthServerGenericClient.SceneManager = function()
     var compassRotation = 0;        // Rotation of the compass
     var compassColor = "0.8 0.8 0.8";// Color of the compass
     var compassLabel = "N";         // Label for the compass
-    var CubeBaseQuery = null;       // A WMS image query for the base of the cube
+    var CubeBaseQuery = null;       // A image query for the base of the cube
+    var CubeBaseFactor = 1;         // Factor to multiply the base shape.
     var subsetting = false;          // Enable slicer for seubsetting
     var subsetManager = null;       // Manager for subsetting
     var navigationType = null;      // Type of navigation
@@ -165,7 +166,8 @@ EarthServerGenericClient.SceneManager = function()
     separationVector[1] = 1;
     separationVector[2] = 1;
     var minDataValue = [];          // Array with the minum data value for each axis
-
+    var addClippingPlanes =  false;     // Flag if clipping plane should be added
+    var clippingPlanes = [];        // arra for clipping planes
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -314,10 +316,14 @@ EarthServerGenericClient.SceneManager = function()
     /**
      * Sets the link or query for the image that should be displayed at the bottom of the cube.
      * @param query - The query or link.
+     * qparam multiplication - Multiplicates the base with this factor.
      */
-    this.setCubeBaseLink = function( query )
+    this.setCubeBaseLink = function( query, multiplication )
     {
         CubeBaseQuery = query;
+
+        if( multiplication)
+            CubeBaseFactor = multiplication;
     };
 
     /**
@@ -327,6 +333,15 @@ EarthServerGenericClient.SceneManager = function()
     this.setSubSetting = function( value )
     {
         subsetting = value;
+    };
+
+    /**
+     * Sets the flag if clipping planes should be added to the scene.
+     * @param value
+     */
+    this.setClippingPlane = function( value )
+    {
+        addClippingPlanes = value;
     };
 
     /**
@@ -396,6 +411,15 @@ EarthServerGenericClient.SceneManager = function()
     this.getGlobalSeparationFlag = function( )
     {
         return enableGlobalSeparation;
+    };
+
+    /**
+     * Returns the flag if clipping planes are enabled.
+     * @returns {boolean}
+     */
+    this.getClippingPlaneFlag =  function()
+    {
+        return addClippingPlanes;
     };
 
     /**
@@ -1399,6 +1423,7 @@ EarthServerGenericClient.SceneManager = function()
 
         if( CubeBaseQuery !== null)
         {
+            var baseTransform    = document.createElement("Transform");
             var baseShape        = document.createElement("Shape");
             var baseAppearance   = document.createElement("Appearance");
             var baseMaterial     = document.createElement("Material");
@@ -1409,6 +1434,7 @@ EarthServerGenericClient.SceneManager = function()
             var basePoints = "";
             var baseTC = "";
 
+            baseTransform.setAttribute("scale",""+ CubeBaseFactor + " 1 " + CubeBaseFactor);
             baseAppearance.setAttribute('sortType', 'opaque');
             baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
             baseImageTexture.setAttribute("url", CubeBaseQuery);
@@ -1428,8 +1454,10 @@ EarthServerGenericClient.SceneManager = function()
             baseAppearance.appendChild(baseMaterial);
             baseShape.appendChild(baseAppearance);
             baseShape.appendChild(baseTrisSet);
-            scene.appendChild(baseShape);
+            baseTransform.appendChild(baseShape);
+            scene.appendChild(baseTransform);
 
+            baseTransform = null;
             baseShape = null;
             baseTexCoords = null;
             baseAppearance = null;
@@ -1449,12 +1477,38 @@ EarthServerGenericClient.SceneManager = function()
 
         scene.appendChild(trans);
         this.trans = trans;
-        trans = null;
 
         var annotationTrans = document.createElement("transform");
         annotationTrans.setAttribute("id","AnnotationsGroup");
         scene.appendChild(annotationTrans);
         annotationTrans = null;
+
+        //clipping planes
+        if( addClippingPlanes )
+        {
+            var planeX = document.createElement("ClipPlane");
+            planeX.setAttribute("plane","1 0 0 "+ cubeSizeX / 2.0);
+
+            var planeY = document.createElement("ClipPlane");
+            planeY.setAttribute("plane","0 1 0 "+ cubeSizeY / 2.0);
+
+            var planeZ = document.createElement("ClipPlane");
+            planeZ.setAttribute("plane","0 0 1 "+ cubeSizeZ / 2.0);
+
+            trans.appendChild( planeX );
+            trans.appendChild( planeY );
+            trans.appendChild( planeZ );
+
+            clippingPlanes.push( planeX );
+            clippingPlanes.push( planeY );
+            clippingPlanes.push( planeZ );
+
+            planeX = null;
+            planeY = null;
+            planeZ = null;
+        }
+
+        trans = null;
 
         if( oculusRift )
         {   this.appendVRShader(x3dID,sceneID);  }
@@ -2598,6 +2652,19 @@ EarthServerGenericClient.SceneManager = function()
             value += ( minModelValue - axisValues.min ) / ( axisValues.max - axisValues.min );
             return value;
         }
+    };
+
+
+    this.updateClippingPlane = function(which, value)
+    {
+
+        if( clippingPlanes[which] )
+        {
+            var plane = x3dom.fields.SFVec4f.parse( clippingPlanes[which].getAttribute("plane") );
+            clippingPlanes[which].setAttribute("plane", ""+ plane.x +" "+ plane.y +" "+ plane.z +" "+ -1*value);
+        }
+        else
+        {   console.log("EarthServerGenericClient:MainScene:updateClippingPlane: Plane " + which + "is not defined.");    }
     };
 
     /**
