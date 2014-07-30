@@ -182,17 +182,48 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
          Because of this the labels on Y and Z are switched.
          */
 
-
         EarthServerGenericClient.appendGenericSlider(separationDiv,"EarthServerGenericClient_SEPARATION_SLIDER_X","X",0,1.0,50.0,10.0, EarthServerGenericClient.MainScene.updateSeparation);
         EarthServerGenericClient.appendGenericSlider(separationDiv,"EarthServerGenericClient_SEPARATION_SLIDER_Z","Y",2,1.0,50.0,10.0, EarthServerGenericClient.MainScene.updateSeparation);
         EarthServerGenericClient.appendGenericSlider(separationDiv,"EarthServerGenericClient_SEPARATION_SLIDER_Y","Z",1,1.0,50.0,10.0, EarthServerGenericClient.MainScene.updateSeparation);
-
-
 
         separationName=null;
         separationDiv=null;
     }
 
+    // Clipping Planes
+    if(  EarthServerGenericClient.MainScene.getClippingPlaneFlag() )
+    {
+        var clippingName = document.createElement("h3");
+        clippingName.innerHTML = "Clipping Planes";
+        var clippingDiv = document.createElement("div");
+        //Set IDs
+        clippingName.setAttribute("id","EarthServerGenericClient_CLIPPING_HEADER");
+        clippingDiv.setAttribute("id","EarthServerGenericClient_CLIPPINGp_Div");
+
+        UI_DIV.appendChild(clippingName);
+        UI_DIV.appendChild(clippingDiv);
+
+        /*
+         Note about the sliders: The cube is using X and Z axis is base and Y as height.
+         While this is standard in computer graphics it can confuse users.
+         Because of this the labels on Y and Z are switched.
+         */
+
+        EarthServerGenericClient.appendGenericSlider(clippingDiv,"EarthServerGenericClient_CLIPPING_SLIDER_X","X",0,
+            -EarthServerGenericClient.MainScene.getCubeSizeX(),EarthServerGenericClient.MainScene.getCubeSizeX(), -EarthServerGenericClient.MainScene.getCubeSizeX(),
+                EarthServerGenericClient.MainScene.updateClippingPlane);
+        EarthServerGenericClient.appendGenericSlider(clippingDiv,"EarthServerGenericClient_CLIPPING_SLIDER_Z","Y",2,
+            -EarthServerGenericClient.MainScene.getCubeSizeZ(),EarthServerGenericClient.MainScene.getCubeSizeZ(),  -EarthServerGenericClient.MainScene.getCubeSizeZ(),
+                EarthServerGenericClient.MainScene.updateClippingPlane);
+        EarthServerGenericClient.appendGenericSlider(clippingDiv,"EarthServerGenericClient_CLIPPING_SLIDER_Y","Z",1,
+            -EarthServerGenericClient.MainScene.getCubeSizeY(),EarthServerGenericClient.MainScene.getCubeSizeY(),  -EarthServerGenericClient.MainScene.getCubeSizeZ(),
+                EarthServerGenericClient.MainScene.updateClippingPlane);
+
+        clippingName=null;
+        clippingDiv=null;
+    }
+
+    // Subsetting
     if( EarthServerGenericClient.MainScene.getSubsettingFlag())
     {
         var Sname = document.createElement("h3");

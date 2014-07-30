@@ -154,7 +154,8 @@ EarthServerGenericClient.SceneManager = function()
     var compassRotation = 0;        // Rotation of the compass
     var compassColor = "0.8 0.8 0.8";// Color of the compass
     var compassLabel = "N";         // Label for the compass
-    var CubeBaseQuery = null;       // A WMS image query for the base of the cube
+    var CubeBaseQuery = null;       // A image query for the base of the cube
+    var CubeBaseFactor = 1;         // Factor to multiply the base shape.
     var subsetting = false;          // Enable slicer for seubsetting
     var subsetManager = null;       // Manager for subsetting
     var navigationType = null;      // Type of navigation
@@ -164,7 +165,9 @@ EarthServerGenericClient.SceneManager = function()
     separationVector[0] = 1;
     separationVector[1] = 1;
     separationVector[2] = 1;
-
+    var minDataValue = [];          // Array with the minum data value for each axis
+    var addClippingPlanes =  false;     // Flag if clipping plane should be added
+    var clippingPlanes = [];        // arra for clipping planes
 
     // Default cube sizes
     var cubeSizeX = 1000;
@@ -313,10 +316,14 @@ EarthServerGenericClient.SceneManager = function()
     /**
      * Sets the link or query for the image that should be displayed at the bottom of the cube.
      * @param query - The query or link.
+     * qparam multiplication - Multiplicates the base with this factor.
      */
-    this.setCubeBaseLink = function( query )
+    this.setCubeBaseLink = function( query, multiplication )
     {
         CubeBaseQuery = query;
+
+        if( multiplication)
+            CubeBaseFactor = multiplication;
     };
 
     /**
@@ -326,6 +333,15 @@ EarthServerGenericClient.SceneManager = function()
     this.setSubSetting = function( value )
     {
         subsetting = value;
+    };
+
+    /**
+     * Sets the flag if clipping planes should be added to the scene.
+     * @param value
+     */
+    this.setClippingPlane = function( value )
+    {
+        addClippingPlanes = value;
     };
 
     /**
@@ -395,6 +411,15 @@ EarthServerGenericClient.SceneManager = function()
     this.getGlobalSeparationFlag = function( )
     {
         return enableGlobalSeparation;
+    };
+
+    /**
+     * Returns the flag if clipping planes are enabled.
+     * @returns {boolean}
+     */
+    this.getClippingPlaneFlag =  function()
+    {
+        return addClippingPlanes;
     };
 
     /**
@@ -1398,6 +1423,7 @@ EarthServerGenericClient.SceneManager = function()
 
         if( CubeBaseQuery !== null)
         {
+            var baseTransform    = document.createElement("Transform");
             var baseShape        = document.createElement("Shape");
             var baseAppearance   = document.createElement("Appearance");
             var baseMaterial     = document.createElement("Material");
@@ -1408,6 +1434,7 @@ EarthServerGenericClient.SceneManager = function()
             var basePoints = "";
             var baseTC = "";
 
+            baseTransform.setAttribute("scale",""+ CubeBaseFactor + " 1 " + CubeBaseFactor);
             baseAppearance.setAttribute('sortType', 'opaque');
             baseShape.setAttribute("id","EarthServerGenericClient_CubeBase");
             baseImageTexture.setAttribute("url", CubeBaseQuery);
@@ -1427,8 +1454,10 @@ EarthServerGenericClient.SceneManager = function()
             baseAppearance.appendChild(baseMaterial);
             baseShape.appendChild(baseAppearance);
             baseShape.appendChild(baseTrisSet);
-            scene.appendChild(baseShape);
+            baseTransform.appendChild(baseShape);
+            scene.appendChild(baseTransform);
 
+            baseTransform = null;
             baseShape = null;
             baseTexCoords = null;
             baseAppearance = null;
@@ -1448,12 +1477,38 @@ EarthServerGenericClient.SceneManager = function()
 
         scene.appendChild(trans);
         this.trans = trans;
-        trans = null;
 
         var annotationTrans = document.createElement("transform");
         annotationTrans.setAttribute("id","AnnotationsGroup");
         scene.appendChild(annotationTrans);
         annotationTrans = null;
+
+        //clipping planes
+        if( addClippingPlanes )
+        {
+            var planeX = document.createElement("ClipPlane");
+            planeX.setAttribute("plane","1 0 0 "+ cubeSizeX / 2.0);
+
+            var planeY = document.createElement("ClipPlane");
+            planeY.setAttribute("plane","0 1 0 "+ cubeSizeY / 2.0);
+
+            var planeZ = document.createElement("ClipPlane");
+            planeZ.setAttribute("plane","0 0 1 "+ cubeSizeZ / 2.0);
+
+            trans.appendChild( planeX );
+            trans.appendChild( planeY );
+            trans.appendChild( planeZ );
+
+            clippingPlanes.push( planeX );
+            clippingPlanes.push( planeY );
+            clippingPlanes.push( planeZ );
+
+            planeX = null;
+            planeY = null;
+            planeZ = null;
+        }
+
+        trans = null;
 
         if( oculusRift )
         {   this.appendVRShader(x3dID,sceneID);  }
@@ -2392,6 +2447,9 @@ EarthServerGenericClient.SceneManager = function()
             var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
             var newTrans;
             var offSetMult;
+            var cubeMult;
+
+            // TODO: clean up....
 
             switch(which)
             {
@@ -2402,8 +2460,15 @@ EarthServerGenericClient.SceneManager = function()
                         if( models[modelIndex].isChildOf === null )
                         {
                             offSetMult = (  2* Math.abs( models[modelIndex].xOffset -0.5 ));
-                            if( offSetMult !== 0.0 )
-                                newTrans *= separationVector[0];
+                            cubeMult   = cubeSizeX / 10;
+
+                            if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                            {
+                                if( newTrans >= 0)
+                                    newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                                else
+                                    newTrans -= cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            }
                         }
 
                         delta = oldTrans.x - newTrans;
@@ -2417,8 +2482,15 @@ EarthServerGenericClient.SceneManager = function()
                         if( models[modelIndex].isChildOf === null )
                         {
                             offSetMult = (  2* Math.abs( models[modelIndex].yOffset -0.5 ));
-                            if( offSetMult !== 0.0 )
-                                newTrans *= separationVector[1];
+                            cubeMult   = cubeSizeY / 10;
+
+                            if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                            {
+                                if( newTrans >= 0)
+                                    newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                                else
+                                    newTrans -= cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            }
                         }
 
                         delta = oldTrans.y - newTrans;
@@ -2430,8 +2502,15 @@ EarthServerGenericClient.SceneManager = function()
                         newTrans = (value - offset- minValue);
 
                         offSetMult = (  2* Math.abs( models[modelIndex].zOffset -0.5 ));
-                        if( offSetMult !== 0.0 )
-                            newTrans *= separationVector[2];
+                        cubeMult   = cubeSizeZ / 10;
+
+                        if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                        {
+                            if( newTrans >= 0)
+                                newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                            else
+                                newTrans -= cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
+                        }
 
                         delta = oldTrans.z - newTrans;
                         oldTrans.z = newTrans;
@@ -2485,7 +2564,6 @@ EarthServerGenericClient.SceneManager = function()
     this.updateSeparation = function(axis,value)
     {
         value /= 10;
-        var currentSliderValue = 1.0;
         var axisSign = "";
 
         switch( parseInt(axis) )
@@ -2502,52 +2580,91 @@ EarthServerGenericClient.SceneManager = function()
             default: console.log("EarthServerGenericClient::SceneManager::updateSeparation: Axis with value " +value+ " not known."); return;
         }
 
-
         for(var i=0; i< models.length; i++)
         {
             if( models[i].isChildOf === null )
             {
-                currentSliderValue = $( "#Model"+i+axisSign ).slider( "value" );
+                // Set slider value to default value
+                var currentSliderValue = EarthServerGenericClient.MainScene.getModelOffsetZ(i) * EarthServerGenericClient.MainScene.getCubeSizeZ();
+                var slider = document.getElementById("Model"+i+axisSign);
+
+                if(slider)
+                    currentSliderValue = $( "#Model"+i+axisSign ).slider( "value" );
+
                 EarthServerGenericClient.MainScene.updateOffset(i,axis,currentSliderValue);
-
-                /*var trans = document.getElementById("EarthServerGenericClient_modelTransform"+i);
-
-                if( trans )
-                {
-                    var delta = 0;
-                    var oldTrans = x3dom.fields.SFVec3f.parse( trans.getAttribute("translation") );
-
-                    console.log(oldTrans);
-                    console.log(separationVector);
-
-                    var newTrans;
-
-                    switch( parseInt(axis) )
-                    {
-                        case 0: newTrans = oldTrans.x * separationVector[0];
-                                delta = oldTrans.x - newTrans;
-                                oldTrans.x = newTrans;
-                                break;
-
-                        case 1: newTrans = oldTrans.y * separationVector[1];
-                                delta = oldTrans.y - newTrans;
-                                oldTrans.y = newTrans;
-                                break;
-
-                        case 2: newTrans = oldTrans.z * separationVector[2];
-                                delta = oldTrans.z - newTrans;
-                                oldTrans.z = newTrans;
-                                break;
-                    }
-
-                    console.log(oldTrans);
-
-                    // update translation and call bindings with the delta
-                    trans.setAttribute("translation",oldTrans.x + " " + oldTrans.y + " " + oldTrans.z );
-                    models[i].movementUpdateBindings(axis,delta);
-                }*/
             }
         }
+    };
+
+    /**
+     * Returns the minimum data value for the given axis.
+     * @param axis
+     * @returns {*}
+     */
+    this.getMinimumDataValueForAxis = function(axis)
+    {
+        var values = {};
+        values.min = 0;
+        values.max = 1;
+
+        if( models.length === 0) return values;
+
+        if( minDataValue[axis] === undefined)
+        {
+            values.min = models[0].getMinDataValueAtAxis(axis);
+            values.max = values.min;
+
+            for(var i=1; i< models.length; i++)
+            {
+                if( values.min > models[i].getMinDataValueAtAxis(axis) )
+                    values.min = models[i].getMinDataValueAtAxis(axis);
+
+                if( values.max < models[i].getMinDataValueAtAxis(axis) )
+                    values.max = models[i].getMinDataValueAtAxis(axis);
+
+            }
+
+            minDataValue[axis] = values;
+        }
+
+        return  minDataValue[axis];
+    };
+
+
+
+    /**
+     * Return the separation multiplier for the given model and axis.
+     * @param modelIndex - Index of the model.
+     * @param axis - Axis.
+     * @returns {number}
+     */
+    this.getSeparationMultiplierForModel = function(modelIndex,axis)
+    {
+        var minModelValue = this.getMinDataValueAtAxis(modelIndex,axis);
+        var axisValues    = this.getMinimumDataValueForAxis(axis);
+
+        var value = 1;
+
+        if( axisValues.min === axisValues.max )
+        {   return value;   }
+        else
+        {
+            value += ( minModelValue - axisValues.min ) / ( axisValues.max - axisValues.min );
+            return value;
+        }
+    };
+
+
+    this.updateClippingPlane = function(which, value)
+    {
+
+        if( clippingPlanes[which] )
+        {
+            var plane = x3dom.fields.SFVec4f.parse( clippingPlanes[which].getAttribute("plane") );
+            clippingPlanes[which].setAttribute("plane", ""+ plane.x +" "+ plane.y +" "+ plane.z +" "+ -1*value);
+        }
+        else
+        {   console.log("EarthServerGenericClient:MainScene:updateClippingPlane: Plane " + which + "is not defined.");    }
     };
 
     /**
