@@ -37,15 +37,29 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.setURL=function(url){
     this.URLWCPS = String(url);
 };
 /**
- * Sets the coverage name.
- * @param coverageVoxel - Coverage name for the layered data set.
+ * Sets the coverage name (or array of names).
+ * @param coverageVoxel - Coverage name (or array of names) for the layered data set.
  */
 EarthServerGenericClient.Model_VoxelSlice.prototype.setCoverage = function (coverageVoxel) {
     /**
      * Name of the voxel coverage.
      * @type {String}
      */
-    this.coverageVoxel = String(coverageVoxel);
+    if (coverageVoxel instanceof Array)
+    {
+        this.coverageVoxel = coverageVoxel;
+        var fe = 'c1 in ( ' + String(coverageVoxel[0]) + ' )';
+        for (var i=1; i<coverageVoxel.length; i++)
+        {
+            fe = fe + ', c' + (i+1) + ' in ( ' + String(coverageVoxel[i]) + ' )';
+        }
+        this.forExpression = fe;
+    }
+    else
+    {
+        this.coverageVoxel = String(coverageVoxel);
+        this.forExpression = 'data in ( ' + this.coverageVoxel + ' )';
+    } 
 };
 /**
  * Sets the slice positions
@@ -145,19 +159,19 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.createModel=function(root, c
         var i = 0;
         for(var j=0; j< this.xSlices.length;j++)
         {
-            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j]  = "for " + this.forExpression + " ";
             this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", {" + this.xAxisLabel + "(" + this.xSlices[j]+ ')}),"png"' + params +' )';
         }
         i = i + j;
         for(var j=0; j< this.ySlices.length;j++)
         {
-            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j]  = "for " + this.forExpression + " ";
             this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", {" + this.yAxisLabel + "(" + this.ySlices[j]+ ')}),"png"' + params +' )';
         }
         i = i + j;
         for(var j=0; j< this.zSlices.length;j++)
         {
-            this.WCPSQuery[i+j]  = "for data in (" + this.coverageVoxel +")";
+            this.WCPSQuery[i+j]  = "for " + this.forExpression + " ";
             this.WCPSQuery[i+j] += "return encode(slice( " + this.coverageExpression + ", {" + this.zAxisLabel + "(" + this.zSlices[j]+ ')}),"png"' + params +' )';
         }
     }
