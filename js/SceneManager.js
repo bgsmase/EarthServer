@@ -1487,13 +1487,15 @@ EarthServerGenericClient.SceneManager = function()
         if( addClippingPlanes )
         {
             var planeX = document.createElement("ClipPlane");
-            planeX.setAttribute("plane","1 0 0 "+ cubeSizeX / 2.0);
+            planeX.setAttribute("plane","-1 0 0 "+ cubeSizeX );
+            //planeX.setAttribute("cappingStrength", "5");
+            //planeX.setAttribute("cappingColor", "0 1 1");
 
             var planeY = document.createElement("ClipPlane");
-            planeY.setAttribute("plane","0 1 0 "+ cubeSizeY / 2.0);
+            planeY.setAttribute("plane","0 -1 0 "+ cubeSizeY );
 
             var planeZ = document.createElement("ClipPlane");
-            planeZ.setAttribute("plane","0 0 1 "+ cubeSizeZ / 2.0);
+            planeZ.setAttribute("plane","0 0 -1 "+ cubeSizeZ );
 
             trans.appendChild( planeX );
             trans.appendChild( planeY );

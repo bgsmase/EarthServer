@@ -290,8 +290,7 @@ EarthServerGenericClient.getWCPSDemCoverage = function(callback,responseData,WCP
                         tmp = parseFloat(valuesList[k]);
                         hm[i][k] = tmp;
 
-                        if( tmp !== demNoData)
-                        {
+
                             if (responseData.maxHMvalue < tmp)
                             {
                                 responseData.maxHMvalue = parseFloat(tmp);
@@ -300,7 +299,7 @@ EarthServerGenericClient.getWCPSDemCoverage = function(callback,responseData,WCP
                             {
                                 responseData.minHMvalue = parseFloat(tmp);
                             }
-                        }
+
                     }
                 }
                 if(responseData.minHMvalue!=0 && responseData.maxHMvalue!=0)

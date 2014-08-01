@@ -5,9 +5,10 @@
  * @param hf - The height map to be used for the elevation grid.
  * @param appearances - Appearances for the Gap Grid.
  * @param NODATA - The NODATA value. Parts with this values are left as a gap in the grid.
+ * @param minVertexCount - Minimum vertex count for faces to be drawn.
  * @constructor
  */
-function GapGrid(parentNode,info, hf,appearances,NODATA)
+function GapGrid(parentNode,info, hf,appearances,NODATA,minVertexCount)
 {
     /**
      * Creates and inserts elevation grid (terrain chunk) into the DOM.
@@ -33,6 +34,9 @@ function GapGrid(parentNode,info, hf,appearances,NODATA)
 
             grid.setAttribute("creaseAngle", "0.01");
             grid.setAttribute("ccw", "true");
+
+            if( coords.index.length === 0)
+            {   coords.index = "0 1 2 3 -1";    }
 
             grid.setAttribute("coordIndex", coords.index);
             grid.appendChild( coordsNode );
@@ -80,32 +84,54 @@ function GapGrid(parentNode,info, hf,appearances,NODATA)
         {
             for(var j=0; j<sizex; j++)
             {
-                coords.coords.push(""+ j + " " + heightfield[o][j] + " " + o + " ");
+                coords.coords.push(""+ j + " " + heightfield[o][j] + " " + o);
             }
         }
+
+        var epsilon = 0.001;
 
         for(var i=0; i+1< sizey; i++)
         {
             for(var k=0; k+1<sizex; k++)
             {
-                // check if NONE of the four vertices used for this face as a NODATA value
-                if( heightfield[i][k] !== NODATA && heightfield[i+1][k] !== NODATA
-                     && heightfield[i+1][k+1] !== NODATA && heightfield[i][k+1] !== NODATA)
+                // check vertices used for this face are NODATA value
+                var validVertices = 0;
+                if( !compareWithNoDataValue( heightfield[i][k],     NODATA, epsilon)) validVertices++;
+                if( !compareWithNoDataValue( heightfield[i+1][k],   NODATA, epsilon)) validVertices++;
+                if( !compareWithNoDataValue( heightfield[i+1][k+1], NODATA, epsilon)) validVertices++;
+                if( !compareWithNoDataValue( heightfield[i][k+1],   NODATA, epsilon)) validVertices++;
+
+                if( validVertices >= minVertexCount )
                 {
-                    // add indices
                     coords.index.push( (i*sizex)+k );
                     coords.index.push( ((i*sizex)+1)+k );
                     coords.index.push( (((i+1)*sizex)+1)+k );
                     coords.index.push( ((i+1)*sizex)+k );
-
                     coords.index.push( -1 );
                 }
             }
         }
 
+        coords.coords = coords.coords.join(" ");
+        coords.index  = coords.index.join(" ");
+
         return coords;
     }
 
+    /**
+     * Compares the given "value" with the value for NoData. If the difference is smaller
+     * than the given epsilon "value" is considered to be NoData and true is returned.
+     * @param value - Value to compare.
+     * @param NoData - Value that is NoData.
+     * @param epsilon - Maximum difference between "value" and "noData.
+     * @returns {boolean} - True if value is equal to NoData (with epsilon).
+     */
+    function compareWithNoDataValue( value, NoData, epsilon )
+    {
+        var diff = Math.abs( value - NoData );
+
+        return diff < epsilon;
+    }
 
     /**
      * Calcs the TextureCoordinates for the elevation grid(s).

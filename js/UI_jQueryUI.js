@@ -216,7 +216,7 @@ EarthServerGenericClient.createBasicUI = function(domElementID)
             -EarthServerGenericClient.MainScene.getCubeSizeZ(),EarthServerGenericClient.MainScene.getCubeSizeZ(),  -EarthServerGenericClient.MainScene.getCubeSizeZ(),
                 EarthServerGenericClient.MainScene.updateClippingPlane);
         EarthServerGenericClient.appendGenericSlider(clippingDiv,"EarthServerGenericClient_CLIPPING_SLIDER_Y","Z",1,
-            -EarthServerGenericClient.MainScene.getCubeSizeY(),EarthServerGenericClient.MainScene.getCubeSizeY(),  -EarthServerGenericClient.MainScene.getCubeSizeZ(),
+            -EarthServerGenericClient.MainScene.getCubeSizeY(),EarthServerGenericClient.MainScene.getCubeSizeY(),  -EarthServerGenericClient.MainScene.getCubeSizeY(),
                 EarthServerGenericClient.MainScene.updateClippingPlane);
 
         clippingName=null;

@@ -165,7 +165,7 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.receiveData= function( data)
 
         //Create Terrain out of the received data
         EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-        this.terrain = new EarthServerGenericClient.LODTerrain(transform, data, this.index, this.noData, this.demNoData);
+        this.terrain = new EarthServerGenericClient.LODTerrain(transform, data, this.index, this.noData, this.demNoData,this.minNoDataVertices);
         this.terrain.createTerrain();
         EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
         this.elevationUpdateBinding();
