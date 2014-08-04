@@ -120,9 +120,9 @@
             var query = 'for i in ( $CI ) ';
             query += 'return encode( ';
             query += '{ ';
-            query += 'red: (char) 0; ';
-            query += 'green: (char) scale((i != -340282346638528859811704183484516925440.0) * 240, {E:"CRS:1"(0:$RESX), N:"CRS:1"(0:$RESZ)}, {}); ';
-            query += 'blue: (char) 0 ';
+            query += 'red: (unsigned char) 0; ';
+            query += 'green: (unsigned char) scale((i != -340282346638528859811704183484516925440.0) * 240, {E:"CRS:1"(0:$RESX), N:"CRS:1"(0:$RESZ)}, {}); ';
+            query += 'blue: (unsigned char) 0 ';
             query += '} ';
             query += ', "png", "nodata=0,0,0")';
             glasgow_witi_t.setWCPSImageQuery(query);
