@@ -2464,7 +2464,7 @@ EarthServerGenericClient.SceneManager = function()
                             offSetMult = (  2* Math.abs( models[modelIndex].xOffset -0.5 ));
                             cubeMult   = cubeSizeX / 10;
 
-                            if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                            if( offSetMult !== 0.0 )
                             {
                                 if( newTrans >= 0)
                                     newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
@@ -2486,7 +2486,7 @@ EarthServerGenericClient.SceneManager = function()
                             offSetMult = (  2* Math.abs( models[modelIndex].yOffset -0.5 ));
                             cubeMult   = cubeSizeY / 10;
 
-                            if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                            if( offSetMult !== 0.0 )
                             {
                                 if( newTrans >= 0)
                                     newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
@@ -2506,7 +2506,7 @@ EarthServerGenericClient.SceneManager = function()
                         offSetMult = (  2* Math.abs( models[modelIndex].zOffset -0.5 ));
                         cubeMult   = cubeSizeZ / 10;
 
-                        if( offSetMult !== 0.0 && separationVector[which] !== 1 )
+                        if( offSetMult !== 0.0 )
                         {
                             if( newTrans >= 0)
                                 newTrans += cubeMult * separationVector[which] * this.getSeparationMultiplierForModel(modelIndex,which);
@@ -2642,18 +2642,8 @@ EarthServerGenericClient.SceneManager = function()
      */
     this.getSeparationMultiplierForModel = function(modelIndex,axis)
     {
-        var minModelValue = this.getMinDataValueAtAxis(modelIndex,axis);
-        var axisValues    = this.getMinimumDataValueForAxis(axis);
-
-        var value = 1;
-
-        if( axisValues.min === axisValues.max )
-        {   return value;   }
-        else
-        {
-            value += ( minModelValue - axisValues.min ) / ( axisValues.max - axisValues.min );
-            return value;
-        }
+	var value = modelIndex / (this.getModelCount() - 1);
+	return value - 0.5;
     };
 
 
@@ -5807,7 +5797,8 @@ EarthServerGenericClient.getWCPSDemCoverage = function(callback,responseData,WCP
                         tmp = parseFloat(valuesList[k]);
                         hm[i][k] = tmp;
 
-
+			if (tmp !== demNoData)
+			{
                             if (responseData.maxHMvalue < tmp)
                             {
                                 responseData.maxHMvalue = parseFloat(tmp);
@@ -5816,7 +5807,7 @@ EarthServerGenericClient.getWCPSDemCoverage = function(callback,responseData,WCP
                             {
                                 responseData.minHMvalue = parseFloat(tmp);
                             }
-
+			}
                     }
                 }
                 if(responseData.minHMvalue!=0 && responseData.maxHMvalue!=0)
@@ -6297,7 +6288,8 @@ EarthServerGenericClient.requestWCSPointCloud = function(callback,WCSurl,WCSvers
 
     EarthServerGenericClient.getPointCloudWCS(callback,data,WCSurl,WCSversion,WCScoverID,minx,maxx,miny,maxy,minh,maxh);
 
-};//Namespace
+};
+//Namespace
 var EarthServerGenericClient = EarthServerGenericClient || {};
 
 /**
