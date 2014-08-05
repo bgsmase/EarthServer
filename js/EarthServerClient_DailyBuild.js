@@ -2478,7 +2478,11 @@ EarthServerGenericClient.SceneManager = function()
                         break;
 
                 case 1: offset = cubeSizeY/2.0;
-                        minValue *= scale.y;
+		if( baseElevation[modelIndex] === undefined)
+            	{
+               		 baseElevation[modelIndex] = scale.y;
+            	}
+                        minValue *= baseElevation[modelIndex];
                         newTrans = (value - offset- minValue);
 
                         if( models[modelIndex].isChildOf === null )
