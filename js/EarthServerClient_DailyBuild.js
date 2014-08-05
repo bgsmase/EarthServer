@@ -7689,7 +7689,7 @@ EarthServerGenericClient.Model_WCPSDemAlpha.prototype.createModel=function(root,
             this.WCPSQuery[i] += 'red: scale(trim(i.0, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {}); ";
             this.WCPSQuery[i] += 'green: scale(trim(i.1, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {}); ";
             this.WCPSQuery[i] += 'blue: scale(trim(i.2, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {});";
-            this.WCPSQuery[i] += 'alpha: (char) (((scale(trim(dtm , {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {})) / 1349) * 255)";
+            this.WCPSQuery[i] += 'alpha: (unsigned char) (((scale(trim(dtm , {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + currentXRes + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + currentZRes + ")}, {})) / 1349) * 255)";
             this.WCPSQuery[i] += '}, "' + this.imageFormat +'" )';
         }
     }
@@ -7920,8 +7920,8 @@ EarthServerGenericClient.Model_WCPSDemWCS.prototype.createModel=function(root, c
         if( this.WCPSQuery === undefined)
         {
             this.WCPSQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
-            this.WCPSQuery += 'scale(trim(i.red, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}) ";
-            this.WCPSQuery += '}, "' + this.imageFormat +'" )';
+            this.WCPSQuery += 'scale(trim(i, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {}) ";
+            this.WCPSQuery += ', "' + this.imageFormat +'" )';
         }
         else //A custom query was defined so use it
         {
@@ -8114,7 +8114,7 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.createModel=function(root, 
         {
             this.WCPSImageQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
             this.WCPSImageQuery += 'scale(trim(i, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
-            this.WCPSImageQuery += '}, "' + this.imageFormat +'" )';
+            this.WCPSImageQuery += ', "' + this.imageFormat +'" )';
         }
         else //A custom query was defined so use it
         {

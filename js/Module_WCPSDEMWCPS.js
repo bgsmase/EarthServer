@@ -127,7 +127,7 @@ EarthServerGenericClient.Model_WCPSDemWCPS.prototype.createModel=function(root, 
         {
             this.WCPSImageQuery =  "for i in (" + this.coverageImage + ") return encode ( ";
             this.WCPSImageQuery += 'scale(trim(i, {' + this.xAxisLabel + ':"' + this.CRS + '"(' + this.minx + ":" +  this.maxx + '), ' + this.zAxisLabel + ':"' + this.CRS + '"(' + this.miny + ":" + this.maxy + ') }), {' + this.xAxisLabel + ':"CRS:1"(0:' + this.XResolution + '), ' + this.zAxisLabel + ':"CRS:1"(0:' + this.ZResolution + ")}, {})";
-            this.WCPSImageQuery += '}, "' + this.imageFormat +'" )';
+            this.WCPSImageQuery += ', "' + this.imageFormat +'" )';
         }
         else //A custom query was defined so use it
         {
