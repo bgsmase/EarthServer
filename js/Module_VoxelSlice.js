@@ -202,29 +202,46 @@ EarthServerGenericClient.Model_VoxelSlice.prototype.receiveData = function( data
     if( failedData == data.length) return;
 
     // create transforms
-    if (this.xSlices.length > 0){
-    XMinimum = this.XMinimum || Math.min.apply(Math, this.xSlices);
-    XMaximum = (this.XResolution && XMinimum + this.XResolution) || Math.max.apply(Math, this.xSlices);;
-    this.transformNodeX = this.createTransform(XMinimum,0,0,XMaximum,1,1);
-    this.root.appendChild(this.transformNodeX);      
+    var XMinimum = 0, YMinimum = 0, ZMinimum = 0;
+    var XMaximum = 1, YMaximum = 1, ZMaximum = 1;
+    if (this.XMinimum) {
+        XMinimum = this.XMinimum;
+    } else if (this.xSlices.length > 0) {
+    XMinimum = Math.min.apply(Math, this.xSlices);
     }
-    if (this.ySlices.length > 0){
-    YMinimum = this.YMinimum || Math.min.apply(Math, this.ySlices);
-    YMaximum = (this.YResolution && YMinimum + this.YResolution) || Math.max.apply(Math, this.ySlices);;
-    this.transformNodeY = this.createTransform(0,YMinimum,0,1,YMaximum,1);
-    this.root.appendChild(this.transformNodeY);      
+    if (this.XResolution) {
+        XMaximum = XMinimum + this.XResolution;
+    } else if (this.xSlices.length > 0){
+        XMaximum = Math.max.apply(Math, this.xSlices);
     }
-    if (this.zSlices.length > 0){
-    ZMinimum = this.ZMinimum || Math.min.apply(Math, this.zSlices);
-    ZMaximum = (this.ZResolution && ZMinimum + this.ZResolution) || Math.max.apply(Math, this.zSlices);;
+    if (this.YMinimum) {
+        YMinimum = this.YMinimum;
+    } else if (this.ySlices.length > 0) {
+    YMinimum = Math.min.apply(Math, this.ySlices);
+    }
+    if (this.YResolution) {
+        YMaximum = YMinimum + this.YResolution;
+    } else if (this.ySlices.length > 0){
+        YMaximum = Math.max.apply(Math, this.ySlices);
+    }
+    if (this.ZMinimum) {
+        ZMinimum = this.ZMinimum;
+    } else if (this.zSlices.length > 0) {
+    ZMinimum = Math.min.apply(Math, this.zSlices);
+    }
+    if (this.ZResolution) {
+        ZMaximum = ZMinimum + this.ZResolution;
+    } else if (this.zSlices.length > 0){
+        ZMaximum = Math.max.apply(Math, this.zSlices);
+    }
+    
     // Graphics Z axis positive out of screen but geographic y axis positive into it
-    this.transformNodeZ = this.createTransform(0,0,ZMaximum,1,1,ZMinimum);
-    this.root.appendChild(this.transformNodeZ);      
-    }
+    this.transformNode = this.createTransform(XMinimum,YMinimum,ZMaximum,XMaximum,YMaximum,ZMinimum);
+    this.root.appendChild(this.transformNode);      
 
     // create terrain
     EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNodeX,this.transformNodeY,this.transformNodeZ,data,this.xSlices,this.ySlices,this.zSlices,this.index,this.noDataValue);
+    this.terrain = new EarthServerGenericClient.VolumeSliceTerrain(this.transformNode,XMinimum,YMinimum,ZMaximum,XMaximum,YMaximum,ZMinimum,data,this.xSlices,this.ySlices,this.zSlices,this.index,this.noDataValue);
     EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
 
 };

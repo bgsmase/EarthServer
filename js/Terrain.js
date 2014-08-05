@@ -145,6 +145,65 @@ EarthServerGenericClient.AbstractTerrain = function()
     };
 
     /**
+     * Creates a plane shape located in a 3D box with the given appearance.
+     * @param root - Node to append the transform to.
+     * @param x1... - bounds of the parent box.
+     * @param appearance - Appearance for the shape.
+     * @param shapeNumber - Number of the shape (used for creating ID).
+     * @param translation - Translation of the plane on the perpendicular axis.
+     * @param axis - perpendicular axis to plane (0=X, 1=Y, 2=Z)
+     * @returns {HTMLElement}
+     */
+    this.createLocatedPlaneWithMaterial = function(root, x0, y0, z0, x1, y1, z1, appearance, shapeNumber, translation, axis)
+    {
+        var shape,transform,grid,coordsNode,tcnode;
+
+        // For backwards compatibility assume Y axis if not specified
+        if (axis === undefined || axis === null) { axis = 1;}
+
+        coordsNode = document.createElement('Coordinate');
+        tcnode = document.createElement("TextureCoordinate");
+
+        switch (axis)
+        {
+            case 0: coordsNode.setAttribute("point", translation + " " + y0 + " " + z0 + " " + translation + " " + y1 + " " + z0 + " " + translation + " " + y1 + " " + z1 + " " + translation + " " + y0 + " " + z1);
+                    tcnode.setAttribute("point", "1 1 1 0 0 0 0 1");
+                    break;
+            case 1: coordsNode.setAttribute("point", x0 + " " + translation + " " + z0 + " " + x1 + " " + translation + " " + z0 + " " + x1 + " " + translation + " " + z1 + " " + x0 + " " + translation + " " + z1);
+                    tcnode.setAttribute("point", "0 0 1 0 1 1 0 1");
+                    break;
+            case 2: coordsNode.setAttribute("point", x0 + " " + y0 + " " + translation + " " + x1 + " " + y0 + " " + translation + " " + x1 + " " + y1 + " " + translation + " " + x0 + " " + y1 + " " + translation);
+                    tcnode.setAttribute("point", "0 1 1 1 1 0 0 0");
+                    break;
+        }
+
+        shape = document.createElement('Shape');
+        shape.setAttribute("id",this.index+"_shape_"+shapeNumber+"_"+0);
+
+
+        grid = document.createElement('IndexedFaceSet');
+        grid.setAttribute("solid", "false");
+        grid.setAttribute("colorPerVertex", "false");
+
+        grid.setAttribute("coordIndex", "0 1 2 3 -1");
+        grid.appendChild( coordsNode );
+        grid.appendChild( tcnode);
+
+        shape.appendChild(appearance);
+        shape.appendChild(grid);
+
+        root.appendChild(shape);
+
+        // set vars null
+        shape = null;
+        grid = null;
+        coordsNode = null;
+
+        EarthServerGenericClient.MainScene.reportProgress(this.index);
+        return shape;
+    };
+
+    /**
      * Creates a html canvas element out of the texture and removes the alpha values.
      * @param texture - Texture to draw. Can be everything which can be rendered into a canvas.
      * @param index - Index of the model using this canvas. Used to give the canvas a unique ID.
@@ -1135,7 +1194,7 @@ EarthServerGenericClient.VolumeTerrain.inheritsFrom( EarthServerGenericClient.Ab
  * @param noDataValue - No Data Value
  * @constructor
  */
-EarthServerGenericClient.VolumeSliceTerrain = function(rootX,rootY,rootZ,dataArray,xSlices,ySlices,zSlices,index,noDataValue)
+EarthServerGenericClient.VolumeSliceTerrain = function(root,XMinimum,YMinimum,ZMaximum,XMaximum,YMaximum,ZMinimum,dataArray,xSlices,ySlices,zSlices,index,noDataValue)
 {
     this.materialNodes = [];//Stores the IDs of the materials to change the transparency.
     this.data = dataArray;
@@ -1157,17 +1216,17 @@ EarthServerGenericClient.VolumeSliceTerrain = function(rootX,rootY,rootZ,dataArr
     var i = 0;
     for(var j=0; j< xSlices.length;j++)
     {
-        this.createPlaneWithMaterial(rootX,this.appearances[i+j][0], i+j,xSlices[j], 0);
+        this.createLocatedPlaneWithMaterial(root,XMinimum,YMinimum,ZMaximum,XMaximum,YMaximum,ZMinimum,this.appearances[i+j][0], i+j,xSlices[j], 0);
     }
     i = i + j;
     for(var j=0; j< ySlices.length;j++)
     {
-        this.createPlaneWithMaterial(rootY,this.appearances[i+j][0], i+j,ySlices[j], 1);
+        this.createLocatedPlaneWithMaterial(root,XMinimum,YMinimum,ZMaximum,XMaximum,YMaximum,ZMinimum,this.appearances[i+j][0], i+j,ySlices[j], 1);
     }
     i = i + j;
     for(var j=0; j< zSlices.length;j++)
     {
-        this.createPlaneWithMaterial(rootZ,this.appearances[i+j][0], i+j,zSlices[j], 2);
+        this.createLocatedPlaneWithMaterial(root,XMinimum,YMinimum,ZMaximum,XMaximum,YMaximum,ZMinimum,this.appearances[i+j][0], i+j,zSlices[j], 2);
     }
 
     /**
