@@ -113,7 +113,7 @@
             glasgow_witi_t.setOffset(0,0.4,0);
             glasgow_witi_t.setResolution(105,102);// Resolution of the model
             // This value will be considered as NODATA in the DEM. Vertices with that value will not be used and gaps are left.
-            glasgow_witi_t.setDemNoDataValue(0);
+            glasgow_witi_t.setDemNoDataValue(0,4);
             // The user can set the height of the model manually to make sure multiple models have the same scaling.
             // Per default this value will be determined by the difference between the dems's min and max values.
             glasgow_witi_t.setHeightResolution(100);

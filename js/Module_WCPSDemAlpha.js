@@ -229,7 +229,7 @@ EarthServerGenericClient.Model_WCPSDemAlpha.prototype.receiveData = function( da
         if( !this.progressiveLoading)
         {
             EarthServerGenericClient.MainScene.timeLogStart("Create Terrain " + this.name);
-            this.terrain = new EarthServerGenericClient.LODTerrain(this.transformNode, data, this.index, this.noData, this.demNoData);
+            this.terrain = new EarthServerGenericClient.LODTerrain(this.transformNode, data, this.index, this.noData, this.demNoData, this.minNoDataVertices);
             this.terrain.createTerrain();
             EarthServerGenericClient.MainScene.timeLogEnd("Create Terrain " + this.name);
             this.elevationUpdateBinding();

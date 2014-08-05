@@ -864,16 +864,18 @@ EarthServerGenericClient.ProgressiveTerrain.inheritsFrom( EarthServerGenericClie
  * @param index - Index of the model that uses this terrain.
  * @param noDataValue - Array with the RGB values to be considered as no data available and shall be drawn transparent.
  * @param noDemValue - The single value in the DEM that should be considered as NODATA
+ * @param minVertexCount - Minimum vertex count for faces to be drawn.
  * @augments EarthServerGenericClient.AbstractTerrain
  * @constructor
  */
-EarthServerGenericClient.LODTerrain = function(root, data,index,noDataValue,noDemValue)
+EarthServerGenericClient.LODTerrain = function(root, data,index,noDataValue,noDemValue,minVertexCount)
 {
     this.materialNodes = [];//Stores the IDs of the materials to change the transparency.
     this.data = data;
     this.index = index;
     this.noData = noDataValue;
     this.noDemValue = noDemValue;
+    this.minVertexCount = minVertexCount;
 
     /**
      * Distance to change between full and 1/2 resolution.
@@ -950,7 +952,7 @@ EarthServerGenericClient.LODTerrain = function(root, data,index,noDataValue,noDe
             lodNode.setAttribute("id", 'lod' + info.ID);
 
             if( this.noData !== undefined || this.noDemValue != undefined)
-            {   new GapGrid(lodNode,info, hm, appearance,this.noDemValue); }
+            {   new GapGrid(lodNode,info, hm, appearance,this.noDemValue, this.minVertexCount); }
             else
             {   new ElevationGrid(lodNode,info, hm, appearance);  }
 

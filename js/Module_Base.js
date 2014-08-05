@@ -318,12 +318,15 @@ EarthServerGenericClient.AbstractSceneModel = function(){
     };
 
     /**
-     * Sets the DEM value to be considered as NODATA in the DEM. No Faces will be drawn having a vertex with that value.
+     * Sets the DEM value to be considered as NODATA in the DEM. No Faces will be drawn if they don't have
+     * the minimum vertex count.
      * @param value - No data value
+     * @param minVertexCount - Minimum vertex count for faces to be drawn. [1-4] Default: 1
      */
-    this.setDemNoDataValue = function( value )
+    this.setDemNoDataValue = function( value, minVertexCount )
     {
         this.demNoData = value;
+        this.minNoDataVertices = minVertexCount || 1;
     };
 
     /**
