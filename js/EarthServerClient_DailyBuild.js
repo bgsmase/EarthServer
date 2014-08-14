@@ -2571,17 +2571,24 @@ EarthServerGenericClient.SceneManager = function()
     {
         value /= 10;
         var axisSign = "";
+        var currentSliderValue;
 
         switch( parseInt(axis) )
         {
             case 0: separationVector[0] = parseFloat(value);
                     axisSign = "X";
+                    // Set slider value to default value
+                    currentSliderValue = EarthServerGenericClient.MainScene.getModelOffsetX(i) * EarthServerGenericClient.MainScene.getCubeSizeX();
                     break;
             case 1: separationVector[1] = parseFloat(value);
                     axisSign = "Y";
+                    // Set slider value to default valu
+                    currentSliderValue = EarthServerGenericClient.MainScene.getModelOffsetY(i) * EarthServerGenericClient.MainScene.getCubeSizeY();
                     break;
             case 2: separationVector[2] = parseFloat(value);
                     axisSign = "Z";
+                    // Set slider value to default value
+                    currentSliderValue = EarthServerGenericClient.MainScene.getModelOffsetZ(i) * EarthServerGenericClient.MainScene.getCubeSizeZ();
                     break;
             default: console.log("EarthServerGenericClient::SceneManager::updateSeparation: Axis with value " +value+ " not known."); return;
         }
@@ -2590,8 +2597,6 @@ EarthServerGenericClient.SceneManager = function()
         {
             if( models[i].isChildOf === null )
             {
-                // Set slider value to default value
-                var currentSliderValue = EarthServerGenericClient.MainScene.getModelOffsetZ(i) * EarthServerGenericClient.MainScene.getCubeSizeZ();
                 var slider = document.getElementById("Model"+i+axisSign);
 
                 if(slider)
